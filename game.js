@@ -56,6 +56,10 @@ updateQuestionCountLabel();
 document.getElementById('start-btn').addEventListener('click', startGame);
 document.getElementById('play-again-btn').addEventListener('click', startGame);
 document.getElementById('quit-btn').addEventListener('click', () => showScreen('title'));
+document.getElementById('clear-stats-btn').addEventListener('click', () => {
+  clearStats();
+  renderStatsBreakdown();
+});
 
 // ════════════════════════════════════════════════════════════
 //  TIMER
@@ -126,6 +130,18 @@ function autoFail() {
   // Reveal correct answer for the slot that was active when time ran out
   const activeIdx = q.answerOrder[currentSlot] ?? q.answerOrder[q.answerOrder.length - 1];
   const slot = q.slots[activeIdx];
+
+  // Record all unanswered slots as wrong
+  for (let step = currentSlot; step < q.answerOrder.length; step++) {
+    const s = q.slots[q.answerOrder[step]];
+    if (s.type === 'combined') {
+      recordAnswer(s.colorFile, false);
+      recordAnswer(s.lifeFile, false);
+    } else {
+      recordAnswer(s.file, false);
+    }
+  }
+
   document.querySelectorAll('.choice-btn').forEach((btn, i) => {
     btn.disabled = true;
     if (i === slot.correctIndex) btn.classList.add('reveal-correct');
@@ -386,6 +402,13 @@ function selectAnswer(chosen) {
   slotResults.push(isCorrect);
   isCorrect ? kefkaCorrect() : kefkaWrong();
 
+  if (slot.type === 'combined') {
+    recordAnswer(slot.colorFile, isCorrect);
+    recordAnswer(slot.lifeFile, isCorrect);
+  } else {
+    recordAnswer(slot.file, isCorrect);
+  }
+
   const buttons = document.querySelectorAll('.choice-btn');
   buttons.forEach((btn, i) => {
     btn.disabled = true;
@@ -469,5 +492,6 @@ function showScore() {
   document.getElementById('score-verdict').style.color = verdict.color;
   document.getElementById('final-reaction-text').textContent = verdict.text;
 
+  renderStatsBreakdown();
   showScreen('score');
 }
