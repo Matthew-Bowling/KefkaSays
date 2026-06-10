@@ -1379,49 +1379,35 @@ function renderChoices(slot) {
 // ════════════════════════════════════════════════════════════
 //  KEFKA GIF ANIMATIONS
 // ════════════════════════════════════════════════════════════
-let kefkaTimer  = null;
-let _kefkaFrames = [];
-let _kefkaIdx   = 0;
+let kefkaTimer = null;
 
 function clearKefkaTimer() {
-  if (kefkaTimer !== null) { clearTimeout(kefkaTimer); kefkaTimer = null; }
-}
-
-// Module-level step so setTimeout can reference it by name without a closure
-function _kefkaAdvance() {
-  if (_kefkaIdx < _kefkaFrames.length) {
-    document.getElementById('kefka-gif').src = _kefkaFrames[_kefkaIdx++];
-    kefkaTimer = setTimeout(_kefkaAdvance, 450);
-  } else {
-    _kefkaFrames = [];
-    document.getElementById('kefka-gif').src = 'images/KefkaLaugh.gif';
+  if (kefkaTimer !== null) {
+    clearTimeout(kefkaTimer);
+    clearInterval(kefkaTimer);
     kefkaTimer = null;
   }
 }
 
 function kefkaLaugh() {
   clearKefkaTimer();
-  _kefkaFrames = [];
   document.getElementById('kefka-gif').src = 'images/KefkaLaugh.gif';
 }
 
 function kefkaCorrect() {
   clearKefkaTimer();
-  _kefkaFrames = [
-    'images/KefkaShocked.gif',
-    'images/KefkaAngry.gif',
-    'images/KefkaShocked.gif',
-    'images/KefkaAngry.gif',
-    'images/KefkaShocked.gif',
-    'images/KefkaAngry.gif',
-  ];
-  _kefkaIdx = 0;
-  _kefkaAdvance();
+  const gif = document.getElementById('kefka-gif');
+  const frames = ['KefkaShocked', 'KefkaAngry', 'KefkaShocked', 'KefkaAngry', 'KefkaShocked', 'KefkaAngry', 'KefkaLaugh'];
+  let step = 0;
+  gif.src = 'images/' + frames[step++] + '.gif';
+  kefkaTimer = setInterval(function() {
+    gif.src = 'images/' + frames[step++] + '.gif';
+    if (step >= frames.length) { clearInterval(kefkaTimer); kefkaTimer = null; }
+  }, 450);
 }
 
 function kefkaWrong() {
   clearKefkaTimer();
-  _kefkaFrames = [];
   document.getElementById('kefka-gif').src = 'images/KefkaWrong.gif';
   kefkaTimer = setTimeout(kefkaLaugh, 2000);
 }
