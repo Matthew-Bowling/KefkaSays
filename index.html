@@ -43,6 +43,7 @@
       GOLD BADGE = NORMAL VALUE &nbsp;·&nbsp; PURPLE BADGE = QUESTION MARK APPLIED
     </div>
     <button class="btn" id="start-btn">BEGIN YOUR HUMILIATION</button>
+    <button class="btn" id="view-stats-btn" style="font-size:0.75rem; padding:8px 24px; border-color:var(--kefka-purple); color:var(--kefka-purple);">VIEW STATS</button>
   </div>
 </div>
 
@@ -133,6 +134,31 @@
     <div style="text-align:right; margin-top:14px;">
       <button class="btn danger" id="clear-stats-btn" style="padding:8px 18px; font-size:0.75rem;">CLEAR STATS</button>
     </div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════
+     STATS SCREEN
+════════════════════════════════════════ -->
+<div id="stats-screen" class="screen">
+
+  <div class="panel" style="text-align:center; padding:24px 32px;">
+    <div class="corner-deco tl"></div><div class="corner-deco tr"></div>
+    <div class="corner-deco bl"></div><div class="corner-deco br"></div>
+    <div class="title-logo" style="font-size:clamp(1.2rem,4vw,2rem);">DEBUFF BREAKDOWN</div>
+    <div class="title-subtitle" style="margin-top:6px;">Your performance across all sessions</div>
+  </div>
+
+  <div class="panel">
+    <div id="stats-rows-page"></div>
+    <div style="text-align:right; margin-top:14px;">
+      <button class="btn danger" id="clear-stats-page-btn" style="padding:8px 18px; font-size:0.75rem;">CLEAR STATS</button>
+    </div>
+  </div>
+
+  <div class="score-actions">
+    <button class="btn" id="stats-back-btn">← BACK</button>
   </div>
 
 </div>

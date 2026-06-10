@@ -34,6 +34,7 @@ const screens = {
   title: document.getElementById('title-screen'),
   quiz:  document.getElementById('quiz-screen'),
   score: document.getElementById('score-screen'),
+  stats: document.getElementById('stats-screen'),
 };
 
 function showScreen(name) {
@@ -59,6 +60,15 @@ document.getElementById('quit-btn').addEventListener('click', () => showScreen('
 document.getElementById('clear-stats-btn').addEventListener('click', () => {
   clearStats();
   renderStatsBreakdown();
+});
+document.getElementById('view-stats-btn').addEventListener('click', () => {
+  renderStatsPage();
+  showScreen('stats');
+});
+document.getElementById('stats-back-btn').addEventListener('click', () => showScreen('title'));
+document.getElementById('clear-stats-page-btn').addEventListener('click', () => {
+  clearStats();
+  renderStatsPage();
 });
 
 // ════════════════════════════════════════════════════════════
@@ -427,6 +437,7 @@ function selectAnswer(chosen) {
   currentSlot++;
 
   if (currentSlot < q.answerOrder.length) {
+    if (selectedDifficulty === 'chaos') clearTimer();
     setTimeout(() => {
       const nextSlotIdx = q.answerOrder[currentSlot];
       if (selectedDifficulty !== 'chaos') {
@@ -435,6 +446,7 @@ function selectAnswer(chosen) {
       }
       updateQuestionHeader(q, nextSlotIdx);
       renderChoices(q.slots[nextSlotIdx]);
+      if (selectedDifficulty === 'chaos') startTimer();
     }, 600);
   } else {
     answered = true;

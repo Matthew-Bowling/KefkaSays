@@ -24,13 +24,9 @@ function clearStats() {
   localStorage.removeItem(STATS_KEY);
 }
 
-function renderStatsBreakdown() {
-  const section = document.getElementById('stats-section');
-  if (!section) return;
-
+function buildStatsEntries() {
   const stats = loadStats();
-
-  const entries = IMAGE_DATA
+  return IMAGE_DATA
     .map(d => {
       const s = stats[d.file] || { correct: 0, wrong: 0 };
       const total = s.correct + s.wrong;
@@ -39,16 +35,17 @@ function renderStatsBreakdown() {
     })
     .filter(e => e.total > 0)
     .sort((a, b) => (a.pct ?? 101) - (b.pct ?? 101));
+}
 
-  section.style.display = '';
-  const rows = document.getElementById('stats-rows');
+function renderStatsInto(rowsEl) {
+  const entries = buildStatsEntries();
 
   if (entries.length === 0) {
-    rows.innerHTML = '<div style="font-size:0.8rem; color:var(--dim); letter-spacing:1px;">No data yet — answer some questions to see your breakdown.</div>';
+    rowsEl.innerHTML = '<div style="font-size:0.8rem; color:var(--dim); letter-spacing:1px;">No data yet — answer some questions to see your breakdown.</div>';
     return;
   }
-  rows.innerHTML = '';
 
+  rowsEl.innerHTML = '';
   entries.forEach(e => {
     const row = document.createElement('div');
     row.className = 'stat-row';
@@ -90,6 +87,16 @@ function renderStatsBreakdown() {
     info.appendChild(counts);
     row.appendChild(img);
     row.appendChild(info);
-    rows.appendChild(row);
+    rowsEl.appendChild(row);
   });
+}
+
+function renderStatsBreakdown() {
+  const el = document.getElementById('stats-rows');
+  if (el) renderStatsInto(el);
+}
+
+function renderStatsPage() {
+  const el = document.getElementById('stats-rows-page');
+  if (el) renderStatsInto(el);
 }
