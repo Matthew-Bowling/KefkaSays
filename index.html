@@ -378,6 +378,28 @@
     .image-slot.slot-correct .slot-timer { color: var(--green); }
     .image-slot.slot-wrong   .slot-timer { color: var(--red); }
 
+    /* ── Chaos survived counter ── */
+    .chaos-score-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      display: none;
+    }
+    .chaos-score-row.visible { display: flex; }
+    .chaos-score-label {
+      font-size: 0.65rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .chaos-score-value {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: 1.1rem;
+      color: var(--gold);
+      text-shadow: 0 0 10px rgba(212,175,55,0.5);
+    }
+
     /* ── Timer ── */
     .timer-row {
       width: 100%;
@@ -592,11 +614,16 @@
 ════════════════════════════════════════ -->
 <div id="quiz-screen" class="screen">
 
-  <div style="width:100%;">
+  <div style="width:100%;" id="progress-wrap">
     <div class="progress-bar-wrap">
       <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
     </div>
     <div class="progress-label" id="progress-label">0 / 0</div>
+  </div>
+
+  <div class="chaos-score-row" id="chaos-score-row">
+    <span class="chaos-score-label">Survived</span>
+    <span class="chaos-score-value" id="chaos-survived">0</span>
   </div>
 
   <div class="timer-row">
@@ -627,6 +654,7 @@
   </div>
 
   <div class="next-wrap">
+    <button class="btn danger" id="chaos-flee-btn" style="display:none;">FLEE</button>
     <button class="btn" id="next-btn" style="display:none;">CONTINUE →</button>
   </div>
 
@@ -815,32 +843,43 @@ function buildSlot(file, withQMark) {
   return { file, withQMark, answer, options, correctIndex };
 }
 
-const NUM_CHAOS_QUESTIONS = 5;
+const CHAOS_FINAL_REACTIONS = [
+  { minScore: 0,  maxScore: 0,
+    verdict: "IMMEDIATE DESTRUCTION",  color: "#cc2200",
+    text: "Zero. Not one. You survived ZERO questions in CHAOS mode. I don't even have words. Actually I do: KU KU KU KU KU! Beautiful. Absolutely beautiful failure." },
+  { minScore: 1,  maxScore: 3,
+    verdict: "CRUSHED BY CHAOS",       color: "#cc2200",
+    text: "KU KU KU! A handful and then collapse! Chaos chewed you up and spat you out before you even got comfortable. This is what I live for." },
+  { minScore: 4,  maxScore: 7,
+    verdict: "BRIEFLY RELEVANT",       color: "#cc6600",
+    text: "You lasted a few rounds before inevitably crumbling. Like a candle in a hurricane. Slightly impressive. Mostly pathetic. Ku ku ku..." },
+  { minScore: 8,  maxScore: 12,
+    verdict: "ANNOYINGLY RESILIENT",   color: "#886600",
+    text: "...You kept going for a while. That's... genuinely irritating. I built Chaos to break people quickly. You are being difficult on purpose, aren't you." },
+  { minScore: 13, maxScore: 19,
+    verdict: "CHAOS HARDENED",         color: "#22aa55",
+    text: "I am furious. FURIOUS. You've outlasted dozens of rounds of pure chaos. Do you have no sense of self-preservation? Stop being competent immediately." },
+  { minScore: 20, maxScore: Infinity,
+    verdict: "YOU HAVE NO EQUAL",      color: "#d4af37",
+    text: "...I refuse to accept this. TWENTY OR MORE? In CHAOS MODE? You are either cheating, inhuman, or somehow more chaotic than chaos itself. I am both enraged and, against every instinct I have... impressed. KU KU KU." },
+];
+
+function buildChaosQuestion() {
+  let pool = [...IMAGE_DATA];
+  for (const [fileA, fileB] of CONFLICTING_PAIRS) {
+    const hasA = pool.some(d => d.file === fileA);
+    const hasB = pool.some(d => d.file === fileB);
+    if (hasA && hasB) {
+      const drop = Math.random() < 0.5 ? fileA : fileB;
+      pool = pool.filter(d => d.file !== drop);
+    }
+  }
+  const slots = shuffle(pool).map(entry => buildSlot(entry.file, Math.random() < 0.5));
+  return { slots };
+}
 
 function buildChaosQuestions() {
-  const questions = [];
-  for (let i = 0; i < NUM_CHAOS_QUESTIONS; i++) {
-    // Start with the full image pool
-    let pool = [...IMAGE_DATA];
-
-    // Resolve each conflict pair: randomly drop one image from each
-    for (const [fileA, fileB] of CONFLICTING_PAIRS) {
-      const hasA = pool.some(d => d.file === fileA);
-      const hasB = pool.some(d => d.file === fileB);
-      if (hasA && hasB) {
-        const drop = Math.random() < 0.5 ? fileA : fileB;
-        pool = pool.filter(d => d.file !== drop);
-      }
-    }
-
-    // Shuffle order and assign random primary/modified per slot
-    const slots = shuffle(pool).map(entry =>
-      buildSlot(entry.file, Math.random() < 0.5)
-    );
-
-    questions.push({ slots });
-  }
-  return questions;
+  return [buildChaosQuestion()];
 }
 
 function buildQuestions() {
@@ -1021,6 +1060,9 @@ function autoFail() {
 
   setTimeout(() => {
     currentQ++;
+    if (selectedDifficulty === 'chaos') {
+      activeQuestions.push(buildChaosQuestion());
+    }
     if (currentQ >= activeQuestions.length) {
       showScore();
     } else {
@@ -1033,14 +1075,23 @@ function autoFail() {
 //  GAME FLOW
 // ════════════════════════════════════════════════════════════
 
+function setChaosUI(isChaos) {
+  document.getElementById('progress-wrap').style.display   = isChaos ? 'none' : 'block';
+  document.getElementById('chaos-score-row').classList.toggle('visible', isChaos);
+  document.getElementById('chaos-flee-btn').style.display  = isChaos ? 'block' : 'none';
+}
+
 function startGame() {
   TIMER_DURATION = TIMER_BY_DIFFICULTY[selectedDifficulty];
   currentQ = 0;
   score = 0;
   activeQuestions = shuffle(buildQuestions());
+  setChaosUI(selectedDifficulty === 'chaos');
   showScreen('quiz');
   loadQuestion();
 }
+
+document.getElementById('chaos-flee-btn').addEventListener('click', showScore);
 
 // ── Render image area for a question ──
 function renderImageArea(q) {
@@ -1149,9 +1200,13 @@ function loadQuestion() {
   const q = activeQuestions[currentQ];
   const total = activeQuestions.length;
 
-  const pct = (currentQ / total) * 100;
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-label').textContent = `${currentQ} / ${total}`;
+  if (selectedDifficulty === 'chaos') {
+    document.getElementById('chaos-survived').textContent = score;
+  } else {
+    const pct = (currentQ / total) * 100;
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-label').textContent = `${currentQ} / ${total}`;
+  }
   document.getElementById('q-number').textContent = `QUESTION ${currentQ + 1}`;
 
   renderImageArea(q);
@@ -1220,6 +1275,9 @@ function selectAnswer(chosen) {
 
 document.getElementById('next-btn').addEventListener('click', () => {
   currentQ++;
+  if (selectedDifficulty === 'chaos') {
+    activeQuestions.push(buildChaosQuestion());
+  }
   if (currentQ >= activeQuestions.length) {
     showScore();
   } else {
@@ -1228,21 +1286,28 @@ document.getElementById('next-btn').addEventListener('click', () => {
 });
 
 function showScore() {
-  const total = activeQuestions.length;
-  const pct = Math.round((score / total) * 100);
+  clearTimer();
+  let verdict;
 
-  document.getElementById('final-score').textContent = score;
-  document.getElementById('final-denom').textContent = `/ ${total}`;
-
-  const verdict = FINAL_REACTIONS.find(r => pct >= r.minPct && pct <= r.maxPct)
-    || FINAL_REACTIONS[FINAL_REACTIONS.length - 1];
+  if (selectedDifficulty === 'chaos') {
+    document.getElementById('final-score').textContent = score;
+    document.getElementById('final-denom').textContent = 'SURVIVED';
+    verdict = CHAOS_FINAL_REACTIONS.find(r => score >= r.minScore && score <= r.maxScore)
+      || CHAOS_FINAL_REACTIONS[CHAOS_FINAL_REACTIONS.length - 1];
+  } else {
+    const total = activeQuestions.length;
+    const pct = Math.round((score / total) * 100);
+    document.getElementById('final-score').textContent = score;
+    document.getElementById('final-denom').textContent = `/ ${total}`;
+    verdict = FINAL_REACTIONS.find(r => pct >= r.minPct && pct <= r.maxPct)
+      || FINAL_REACTIONS[FINAL_REACTIONS.length - 1];
+    document.getElementById('progress-fill').style.width = '100%';
+    document.getElementById('progress-label').textContent = `${total} / ${total}`;
+  }
 
   document.getElementById('score-verdict').textContent = verdict.verdict;
   document.getElementById('score-verdict').style.color = verdict.color;
   document.getElementById('final-reaction-text').textContent = verdict.text;
-
-  document.getElementById('progress-fill').style.width = '100%';
-  document.getElementById('progress-label').textContent = `${total} / ${total}`;
 
   showScreen('score');
 }
