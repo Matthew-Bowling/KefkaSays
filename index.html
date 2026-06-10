@@ -324,21 +324,21 @@
       flex-direction: row;
       align-items: flex-end;
       justify-content: center;
-      gap: 10px;
-      flex-wrap: wrap;
+      gap: 6px;
+      flex-wrap: nowrap;
+      overflow: hidden;
     }
     .image-slot {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      padding: 8px 6px 6px;
+      gap: 3px;
+      padding: 6px 4px 5px;
       border: 2px solid rgba(106,13,173,0.25);
       border-radius: 3px;
       transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
       flex: 1;
-      min-width: 80px;
-      max-width: 160px;
+      min-width: 0;
     }
     .image-slot.active {
       border-color: var(--gold);
@@ -353,28 +353,28 @@
       background: rgba(204,34,0,0.08);
     }
     .image-slot .slot-qmark {
-      height: 18px;
+      height: 14px;
       width: auto;
       opacity: 0.88;
       filter: drop-shadow(0 0 4px rgba(138,43,226,0.6));
     }
     .image-slot .slot-qmark-spacer {
-      height: 18px;
+      height: 14px;
     }
     .image-slot .slot-img {
       max-width: 100%;
-      max-height: 120px;
-      min-height: 50px;
+      max-height: 72px;
+      min-height: 32px;
       object-fit: contain;
     }
     .slot-timer {
       font-family: 'Cinzel', Georgia, serif;
-      font-size: 0.7rem;
-      letter-spacing: 2px;
+      font-size: 0.6rem;
+      letter-spacing: 1px;
       color: var(--dim);
-      margin-top: 4px;
+      margin-top: 2px;
     }
-    .image-slot.active    .slot-timer { color: var(--gold); }
+    .image-slot.active       .slot-timer { color: var(--gold); }
     .image-slot.slot-correct .slot-timer { color: var(--green); }
     .image-slot.slot-wrong   .slot-timer { color: var(--red); }
 
@@ -820,6 +820,30 @@ const CONFLICTING_PAIRS = [
   ['images/Blue.png', 'images/Purple.png'],
 ];
 
+// Display order for multi-slot questions. Lower = further left.
+// Fire/Water share the same value so their relative order stays random.
+// Blue/Purple also get no timer label.
+const FILE_DISPLAY_ORDER = {
+  'images/Blue.png':              0,
+  'images/Purple.png':            0,
+  'images/Die.png':               1,
+  'images/DontDie.png':           1,
+  'images/CursedShriek.png':      2,
+  'images/ForkedLightning.png':   3,
+  'images/CompressedWater.png':   4,
+  'images/AccelerationBomb.png':  5,
+  'images/FireChariot.png':       6,
+  'images/WaterDonut.png':        6,
+};
+
+const NO_TIMER_FILES = new Set(['images/Blue.png', 'images/Purple.png']);
+
+function sortSlots(slots) {
+  return [...slots].sort((a, b) =>
+    (FILE_DISPLAY_ORDER[a.file] ?? 99) - (FILE_DISPLAY_ORDER[b.file] ?? 99)
+  );
+}
+
 function hasConflict(slots) {
   const files = slots.map(s => s.file);
   return CONFLICTING_PAIRS.some(([a, b]) => files.includes(a) && files.includes(b));
@@ -874,7 +898,7 @@ function buildChaosQuestion() {
       pool = pool.filter(d => d.file !== drop);
     }
   }
-  const slots = shuffle(pool).map(entry => buildSlot(entry.file, Math.random() < 0.5));
+  const slots = sortSlots(shuffle(pool).map(entry => buildSlot(entry.file, Math.random() < 0.5)));
   return { slots };
 }
 
@@ -892,7 +916,7 @@ function buildQuestions() {
         }
         return true;
       })
-      .map(set => ({ slots: set.map(s => buildSlot(s.file, s.withQMark)) }));
+      .map(set => ({ slots: sortSlots(set.map(s => buildSlot(s.file, s.withQMark))) }));
   }
   if (selectedDifficulty === 'chaos') {
     return buildChaosQuestions();
@@ -1125,6 +1149,7 @@ function renderImageArea(q) {
     }
   } else {
     area.className = 'image-area multi';
+    let timerCount = 0;
     q.slots.forEach((slot, i) => {
       const slotEl = document.createElement('div');
       slotEl.className = 'image-slot' + (i === 0 ? ' active' : '');
@@ -1148,10 +1173,13 @@ function renderImageArea(q) {
       img.className = 'slot-img';
       slotEl.appendChild(img);
 
-      const timerLabel = document.createElement('div');
-      timerLabel.className = 'slot-timer';
-      timerLabel.textContent = (i + 1) * 10;
-      slotEl.appendChild(timerLabel);
+      if (!NO_TIMER_FILES.has(slot.file)) {
+        timerCount++;
+        const timerLabel = document.createElement('div');
+        timerLabel.className = 'slot-timer';
+        timerLabel.textContent = timerCount * 10;
+        slotEl.appendChild(timerLabel);
+      }
 
       area.appendChild(slotEl);
     });
