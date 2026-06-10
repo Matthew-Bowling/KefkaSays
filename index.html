@@ -396,6 +396,12 @@
       max-width: 100%;
       object-fit: contain;
     }
+    /* Combined slot outer box — always gold-bordered so it stands out in Chaos */
+    .image-slot.combined-slot-wrap {
+      border-color: rgba(212,175,55,0.5);
+      background: rgba(212,175,55,0.05);
+      flex: 2;
+    }
     /* type badge for combined slot */
     .type-badge.combined {
       background: rgba(212,175,55,0.08);
@@ -1109,7 +1115,7 @@ function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function updateQuestionCountLabel() {
   let count;
   if (selectedDifficulty === 'normal') count = WRETCH_QUESTIONS.length;
-  else if (selectedDifficulty === 'chaos') count = NUM_CHAOS_QUESTIONS;
+  else if (selectedDifficulty === 'chaos') count = '∞';
   else count = IMAGE_DATA.length * 2;
   document.getElementById('question-count-label').textContent = count;
 }
@@ -1260,10 +1266,13 @@ function renderImageArea(q) {
     q.slots.forEach((slot, i) => {
       const isFirstActive = selectedDifficulty !== 'chaos' && q.answerOrder[0] === i;
       const slotEl = document.createElement('div');
-      slotEl.className = 'image-slot' + (isFirstActive ? ' active' : '');
+      const isCombined = slot.type === 'combined';
+      slotEl.className = 'image-slot'
+        + (isFirstActive ? ' active' : '')
+        + (isCombined ? ' combined-slot-wrap' : '');
       slotEl.id = `slot-${i}`;
 
-      if (slot.type === 'combined') {
+      if (isCombined) {
         // Two icons side by side in one slot
         const combinedIcons = document.createElement('div');
         combinedIcons.className = 'combined-icons';
