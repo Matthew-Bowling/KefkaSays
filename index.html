@@ -1016,25 +1016,18 @@ function buildChaosQuestions() {
   return [buildChaosQuestion()];
 }
 
+const VALID_WRETCH_SETS = WRETCH_QUESTIONS.filter(set => !hasConflict(set) && !hasCoOccurrenceViolation(set));
+
+function buildWretchQuestion() {
+  const set = VALID_WRETCH_SETS[Math.floor(Math.random() * VALID_WRETCH_SETS.length)];
+  const rawSlots = mergeColorLifePair(sortSlots(set.map(s => buildSlot(s.file, s.withQMark))));
+  const { slots, answerOrder } = assignTimerOrder(rawSlots);
+  return { slots, answerOrder };
+}
+
 function buildQuestions() {
   if (selectedDifficulty === 'normal') {
-    return WRETCH_QUESTIONS
-      .filter(set => {
-        if (hasConflict(set)) {
-          console.error('KefkaSays: conflicting images in set — skipping', set.map(s => s.file));
-          return false;
-        }
-        if (hasCoOccurrenceViolation(set)) {
-          console.error('KefkaSays: color (Blue/Purple) and life (Die/DontDie) must appear together — skipping', set.map(s => s.file));
-          return false;
-        }
-        return true;
-      })
-      .map(set => {
-        const rawSlots = mergeColorLifePair(sortSlots(set.map(s => buildSlot(s.file, s.withQMark))));
-        const { slots, answerOrder } = assignTimerOrder(rawSlots);
-        return { slots, answerOrder };
-      });
+    return [buildWretchQuestion()];
   }
   if (selectedDifficulty === 'chaos') {
     return buildChaosQuestions();
@@ -1119,7 +1112,7 @@ function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 // ── Title ──
 function updateQuestionCountLabel() {
   let count;
-  if (selectedDifficulty === 'normal') count = WRETCH_QUESTIONS.length;
+  if (selectedDifficulty === 'normal') count = '∞';
   else if (selectedDifficulty === 'chaos') count = '∞';
   else count = IMAGE_DATA.length * 2;
   document.getElementById('question-count-label').textContent = count;
@@ -1205,9 +1198,8 @@ function autoFail() {
 
   setTimeout(() => {
     currentQ++;
-    if (selectedDifficulty === 'chaos') {
-      activeQuestions.push(buildChaosQuestion());
-    }
+    if (selectedDifficulty === 'chaos') activeQuestions.push(buildChaosQuestion());
+    if (selectedDifficulty === 'normal') activeQuestions.push(buildWretchQuestion());
     if (currentQ >= activeQuestions.length) {
       showScore();
     } else {
@@ -1231,7 +1223,7 @@ function startGame() {
   currentQ = 0;
   score = 0;
   activeQuestions = shuffle(buildQuestions());
-  setChaosUI(selectedDifficulty === 'chaos');
+  setChaosUI(selectedDifficulty === 'chaos' || selectedDifficulty === 'normal');
   showScreen('quiz');
   loadQuestion();
 }
@@ -1419,7 +1411,7 @@ function loadQuestion() {
   const q = activeQuestions[currentQ];
   const total = activeQuestions.length;
 
-  if (selectedDifficulty === 'chaos') {
+  if (selectedDifficulty === 'chaos' || selectedDifficulty === 'normal') {
     document.getElementById('chaos-survived').textContent = score;
   } else {
     const pct = (currentQ / total) * 100;
@@ -1500,9 +1492,8 @@ function selectAnswer(chosen) {
 
 document.getElementById('next-btn').addEventListener('click', () => {
   currentQ++;
-  if (selectedDifficulty === 'chaos') {
-    activeQuestions.push(buildChaosQuestion());
-  }
+  if (selectedDifficulty === 'chaos') activeQuestions.push(buildChaosQuestion());
+  if (selectedDifficulty === 'normal') activeQuestions.push(buildWretchQuestion());
   if (currentQ >= activeQuestions.length) {
     showScore();
   } else {
@@ -1514,7 +1505,7 @@ function showScore() {
   clearTimer();
   let verdict;
 
-  if (selectedDifficulty === 'chaos') {
+  if (selectedDifficulty === 'chaos' || selectedDifficulty === 'normal') {
     document.getElementById('final-score').textContent = score;
     document.getElementById('final-denom').textContent = 'SURVIVED';
     verdict = CHAOS_FINAL_REACTIONS.find(r => score >= r.minScore && score <= r.maxScore)
