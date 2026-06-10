@@ -169,29 +169,34 @@
       object-fit: contain;
     }
 
-    /* Dual image: [image] [+] [?] */
+    /* Dual image: [? small above] / [subject below] */
     .image-area.dual {
-      gap: 16px;
+      flex-direction: column;
+      gap: 10px;
     }
-    .image-area.dual .img-slot {
+    .image-area.dual .debuff-row {
       display: flex;
       align-items: center;
       justify-content: center;
-      flex: 1;
-      max-width: 42%;
+      gap: 8px;
     }
-    .image-area.dual .img-slot img {
-      max-width: 100%;
-      max-height: 180px;
+    .image-area.dual .debuff-row img {
+      height: 20px;
+      width: auto;
       object-fit: contain;
+      opacity: 0.92;
+      filter: drop-shadow(0 0 6px rgba(138,43,226,0.6));
     }
-    .image-area.dual .plus-sign {
-      font-family: 'Cinzel Decorative', cursive;
-      font-size: 2rem;
-      color: var(--kefka-purple);
-      text-shadow: 0 0 12px rgba(138,43,226,0.7);
-      flex-shrink: 0;
-      user-select: none;
+    .image-area.dual .main-slot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .image-area.dual .main-slot img {
+      width: min(280px, 90%);
+      height: auto;
+      max-height: 300px;
+      object-fit: contain;
     }
 
     .question-number {
@@ -313,6 +318,55 @@
     }
 
     .next-wrap { display: flex; justify-content: flex-end; width: 100%; }
+
+    /* ── Multi-slot image row (Wretch+) ── */
+    .image-area.multi {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .image-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 6px 6px;
+      border: 2px solid rgba(106,13,173,0.25);
+      border-radius: 3px;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+      flex: 1;
+      min-width: 80px;
+      max-width: 160px;
+    }
+    .image-slot.active {
+      border-color: var(--gold);
+      box-shadow: 0 0 14px rgba(212,175,55,0.25);
+    }
+    .image-slot.slot-correct {
+      border-color: var(--green);
+      background: rgba(34,170,85,0.08);
+    }
+    .image-slot.slot-wrong {
+      border-color: var(--red);
+      background: rgba(204,34,0,0.08);
+    }
+    .image-slot .slot-qmark {
+      height: 18px;
+      width: auto;
+      opacity: 0.88;
+      filter: drop-shadow(0 0 4px rgba(138,43,226,0.6));
+    }
+    .image-slot .slot-qmark-spacer {
+      height: 18px;
+    }
+    .image-slot .slot-img {
+      max-width: 100%;
+      max-height: 120px;
+      min-height: 50px;
+      object-fit: contain;
+    }
 
     /* ── Timer ── */
     .timer-row {
@@ -686,27 +740,40 @@ const FINAL_REACTIONS = [
 //  Wrong answers are randomly drawn from all values in the pool.
 // ════════════════════════════════════════════════════════════
 
+// ════════════════════════════════════════════════════════════
+//  WRETCH QUESTIONS
+//  Each entry is a set of slots shown together left-to-right.
+//  withQMark: true  → player answers the modified value
+//  withQMark: false → player answers the primary value
+//  Add more sets here to expand Wretch mode.
+// ════════════════════════════════════════════════════════════
+const WRETCH_QUESTIONS = [
+  [
+    { file: "images/AccelerationBomb.png", withQMark: false },
+    { file: "images/Blue.png",             withQMark: true  },
+  ],
+  [
+    { file: "images/Die.png",              withQMark: false },
+    { file: "images/DontDie.png",          withQMark: true  },
+  ],
+  [
+    { file: "images/FireChariot.png",      withQMark: false },
+    { file: "images/WaterDonut.png",       withQMark: true  },
+  ],
+  [
+    { file: "images/CompressedWater.png",  withQMark: false },
+    { file: "images/ForkedLightning.png",  withQMark: true  },
+    { file: "images/Purple.png",           withQMark: false },
+  ],
+  [
+    { file: "images/CursedShriek.png",     withQMark: true  },
+    { file: "images/AccelerationBomb.png", withQMark: true  },
+    { file: "images/Blue.png",             withQMark: false },
+  ],
+];
+
 // Collect every unique value across all images for use as wrong answers
 const ALL_VALUES = [...new Set(IMAGE_DATA.flatMap(d => [d.primary, d.modified]))];
-
-function buildQuestions() {
-  const pool = [];
-  IMAGE_DATA.forEach(entry => {
-    // Primary question
-    pool.push({
-      file: entry.file,
-      withQMark: false,
-      answer: entry.primary,
-    });
-    // Modified (question mark) question
-    pool.push({
-      file: entry.file,
-      withQMark: true,
-      answer: entry.modified,
-    });
-  });
-  return pool;
-}
 
 function generateChoices(correctAnswer) {
   const wrong = ALL_VALUES.filter(v => v !== correctAnswer);
@@ -716,10 +783,33 @@ function generateChoices(correctAnswer) {
   return { options: all, correctIndex: all.indexOf(correctAnswer) };
 }
 
+function buildSlot(file, withQMark) {
+  const data = IMAGE_DATA.find(d => d.file === file);
+  const answer = withQMark ? data.modified : data.primary;
+  const { options, correctIndex } = generateChoices(answer);
+  return { file, withQMark, answer, options, correctIndex };
+}
+
+function buildQuestions() {
+  if (selectedDifficulty === 'normal') {
+    return WRETCH_QUESTIONS.map(set => ({
+      slots: set.map(s => buildSlot(s.file, s.withQMark))
+    }));
+  }
+  // Fool and Chaos: single-slot questions (one per image, primary + modified)
+  const pool = [];
+  IMAGE_DATA.forEach(entry => {
+    pool.push({ slots: [buildSlot(entry.file, false)] });
+    pool.push({ slots: [buildSlot(entry.file, true)]  });
+  });
+  return pool;
+}
+
 // ════════════════════════════════════════════════════════════
 //  TIMER CONFIG
 // ════════════════════════════════════════════════════════════
-const TIMER_DURATION = 30;
+const TIMER_BY_DIFFICULTY = { easy: 30, normal: 20, chaos: 10 };
+let TIMER_DURATION = 30;
 
 const TIME_UP_REACTIONS = [
   "Tick tock... too slow, you dithering fool!",
@@ -742,6 +832,8 @@ document.querySelectorAll('.diff-btn').forEach(btn => {
     document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     selectedDifficulty = btn.dataset.diff;
+    TIMER_DURATION = TIMER_BY_DIFFICULTY[selectedDifficulty];
+    updateQuestionCountLabel();
   });
 });
 
@@ -749,6 +841,8 @@ document.querySelectorAll('.diff-btn').forEach(btn => {
 //  STATE
 // ════════════════════════════════════════════════════════════
 let currentQ = 0;
+let currentSlot = 0;
+let slotResults = [];
 let score = 0;
 let answered = false;
 let activeQuestions = [];
@@ -779,7 +873,13 @@ function shuffle(arr) {
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 // ── Title ──
-document.getElementById('question-count-label').textContent = IMAGE_DATA.length * 2;
+function updateQuestionCountLabel() {
+  const count = selectedDifficulty === 'normal'
+    ? WRETCH_QUESTIONS.length
+    : IMAGE_DATA.length * 2;
+  document.getElementById('question-count-label').textContent = count;
+}
+updateQuestionCountLabel();
 document.getElementById('start-btn').addEventListener('click', startGame);
 document.getElementById('play-again-btn').addEventListener('click', startGame);
 document.getElementById('quit-btn').addEventListener('click', () => showScreen('title'));
@@ -818,10 +918,10 @@ function updateTimerDisplay() {
 
   fill.className = 'timer-bar-fill';
   num.className  = 'timer-number';
-  if (timeLeft <= 7) {
+  if (pct <= 25) {
     fill.classList.add('danger');
     num.classList.add('danger');
-  } else if (timeLeft <= 15) {
+  } else if (pct <= 50) {
     fill.classList.add('warning');
     num.classList.add('warning');
   }
@@ -832,9 +932,23 @@ function autoFail() {
   answered = true;
 
   const q = activeQuestions[currentQ];
+
+  // Mark current and remaining slots as wrong in multi mode
+  if (q.slots.length > 1) {
+    for (let i = currentSlot; i < q.slots.length; i++) {
+      const slotEl = document.getElementById(`slot-${i}`);
+      if (slotEl) {
+        slotEl.classList.remove('active');
+        slotEl.classList.add('slot-wrong');
+      }
+    }
+  }
+
+  // Reveal correct answer for the slot that was active when time ran out
+  const slot = q.slots[currentSlot] || q.slots[q.slots.length - 1];
   document.querySelectorAll('.choice-btn').forEach((btn, i) => {
     btn.disabled = true;
-    if (i === q.correctIndex) btn.classList.add('reveal-correct');
+    if (i === slot.correctIndex) btn.classList.add('reveal-correct');
   });
 
   const reaction = document.getElementById('kefka-reaction');
@@ -856,94 +970,126 @@ function autoFail() {
 // ════════════════════════════════════════════════════════════
 
 function startGame() {
+  TIMER_DURATION = TIMER_BY_DIFFICULTY[selectedDifficulty];
   currentQ = 0;
   score = 0;
-  activeQuestions = shuffle(buildQuestions()).map(q => {
-    const { options, correctIndex } = generateChoices(q.answer);
-    return { ...q, options, correctIndex };
-  });
+  activeQuestions = shuffle(buildQuestions());
   showScreen('quiz');
   loadQuestion();
 }
 
-function loadQuestion() {
-  answered = false;
-  const q = activeQuestions[currentQ];
-  const total = activeQuestions.length;
-
-  // Progress
-  const pct = (currentQ / total) * 100;
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-label').textContent = `${currentQ} / ${total}`;
-
-  // Question number
-  document.getElementById('q-number').textContent = `QUESTION ${currentQ + 1}`;
-
-  // Type badge
-  const badge = document.getElementById('type-badge');
-  if (q.withQMark) {
-    badge.textContent = '? MODIFIED';
-    badge.className = 'type-badge modified';
-  } else {
-    badge.textContent = 'BASE VALUE';
-    badge.className = 'type-badge primary';
-  }
-
-  // Question text
-  document.getElementById('q-text').textContent = q.withQMark
-    ? 'The Question Mark has changed this image. What is its new value?'
-    : 'What is the value of this image?';
-
-  // Image area
+// ── Render image area for a question ──
+function renderImageArea(q) {
   const area = document.getElementById('image-area');
   area.innerHTML = '';
 
-  if (q.withQMark) {
-    area.className = 'image-area dual';
-    const slotA = document.createElement('div');
-    slotA.className = 'img-slot';
-    const imgA = document.createElement('img');
-    imgA.src = q.file;
-    imgA.alt = 'Subject';
-    slotA.appendChild(imgA);
-
-    const plus = document.createElement('span');
-    plus.className = 'plus-sign';
-    plus.textContent = '+';
-
-    const slotB = document.createElement('div');
-    slotB.className = 'img-slot';
-    const imgB = document.createElement('img');
-    imgB.src = 'images/QuestionMark.png';
-    imgB.alt = 'Question Mark';
-    slotB.appendChild(imgB);
-
-    area.appendChild(slotA);
-    area.appendChild(plus);
-    area.appendChild(slotB);
+  if (q.slots.length === 1) {
+    const slot = q.slots[0];
+    if (slot.withQMark) {
+      area.className = 'image-area dual';
+      const debuffRow = document.createElement('div');
+      debuffRow.className = 'debuff-row';
+      const qmarkImg = document.createElement('img');
+      qmarkImg.src = 'images/QuestionMark.png';
+      qmarkImg.alt = 'Question Mark';
+      debuffRow.appendChild(qmarkImg);
+      const mainSlot = document.createElement('div');
+      mainSlot.className = 'main-slot';
+      const mainImg = document.createElement('img');
+      mainImg.src = slot.file;
+      mainImg.alt = 'Subject';
+      mainSlot.appendChild(mainImg);
+      area.appendChild(debuffRow);
+      area.appendChild(mainSlot);
+    } else {
+      area.className = 'image-area single';
+      const img = document.createElement('img');
+      img.src = slot.file;
+      img.alt = 'Subject';
+      area.appendChild(img);
+    }
   } else {
-    area.className = 'image-area single';
-    const img = document.createElement('img');
-    img.src = q.file;
-    img.alt = 'Subject';
-    area.appendChild(img);
-  }
+    area.className = 'image-area multi';
+    q.slots.forEach((slot, i) => {
+      const slotEl = document.createElement('div');
+      slotEl.className = 'image-slot' + (i === 0 ? ' active' : '');
+      slotEl.id = `slot-${i}`;
 
-  // Choices
+      if (slot.withQMark) {
+        const qmark = document.createElement('img');
+        qmark.src = 'images/QuestionMark.png';
+        qmark.alt = 'QMark';
+        qmark.className = 'slot-qmark';
+        slotEl.appendChild(qmark);
+      } else {
+        const spacer = document.createElement('div');
+        spacer.className = 'slot-qmark-spacer';
+        slotEl.appendChild(spacer);
+      }
+
+      const img = document.createElement('img');
+      img.src = slot.file;
+      img.alt = `Slot ${i + 1}`;
+      img.className = 'slot-img';
+      slotEl.appendChild(img);
+
+      area.appendChild(slotEl);
+    });
+  }
+}
+
+// ── Update question header for the current slot ──
+function updateQuestionHeader(q, slotIdx) {
+  const slot = q.slots[slotIdx];
+  const badge = document.getElementById('type-badge');
+  const isMulti = q.slots.length > 1;
+
+  if (isMulti) {
+    badge.textContent = `${slotIdx + 1} OF ${q.slots.length}`;
+    badge.className = 'type-badge ' + (slot.withQMark ? 'modified' : 'primary');
+    document.getElementById('q-text').textContent = slot.withQMark
+      ? `Image ${slotIdx + 1}: The Question Mark has changed this. What is its value?`
+      : `Image ${slotIdx + 1}: What is the value of this image?`;
+  } else {
+    badge.textContent = slot.withQMark ? '? MODIFIED' : 'BASE VALUE';
+    badge.className = 'type-badge ' + (slot.withQMark ? 'modified' : 'primary');
+    document.getElementById('q-text').textContent = slot.withQMark
+      ? 'The Question Mark has changed this image. What is its new value?'
+      : 'What is the value of this image?';
+  }
+}
+
+// ── Render answer choices for a slot ──
+function renderChoices(slot) {
   const choicesWrap = document.getElementById('choices-wrap');
   choicesWrap.innerHTML = '';
   const labels = ['A', 'B', 'C', 'D'];
-  q.options.forEach((opt, i) => {
+  slot.options.forEach((opt, i) => {
     const btn = document.createElement('button');
     btn.className = 'choice-btn';
     btn.innerHTML = `<span class="choice-label">${labels[i]}</span> ${opt}`;
     btn.addEventListener('click', () => selectAnswer(i));
     choicesWrap.appendChild(btn);
   });
+}
 
-  // Reset reaction + next button
-  const reaction = document.getElementById('kefka-reaction');
-  reaction.className = 'kefka-reaction';
+function loadQuestion() {
+  answered = false;
+  currentSlot = 0;
+  slotResults = [];
+  const q = activeQuestions[currentQ];
+  const total = activeQuestions.length;
+
+  const pct = (currentQ / total) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `${currentQ} / ${total}`;
+  document.getElementById('q-number').textContent = `QUESTION ${currentQ + 1}`;
+
+  renderImageArea(q);
+  updateQuestionHeader(q, 0);
+  renderChoices(q.slots[0]);
+
+  document.getElementById('kefka-reaction').className = 'kefka-reaction';
   document.getElementById('reaction-text').textContent = '';
   document.getElementById('next-btn').style.display = 'none';
 
@@ -952,33 +1098,55 @@ function loadQuestion() {
 
 function selectAnswer(chosen) {
   if (answered) return;
-  answered = true;
-  clearTimer();
 
   const q = activeQuestions[currentQ];
-  const correct = q.correctIndex;
-  const buttons = document.querySelectorAll('.choice-btn');
+  const slot = q.slots[currentSlot];
+  const correct = slot.correctIndex;
+  const isCorrect = chosen === correct;
 
+  slotResults.push(isCorrect);
+
+  const buttons = document.querySelectorAll('.choice-btn');
   buttons.forEach((btn, i) => {
     btn.disabled = true;
-    if (i === correct && chosen !== correct) btn.classList.add('reveal-correct');
+    if (i === correct && !isCorrect) btn.classList.add('reveal-correct');
   });
+  buttons[chosen].classList.add(isCorrect ? 'correct' : 'wrong');
 
-  const reaction = document.getElementById('kefka-reaction');
-  const reactionText = document.getElementById('reaction-text');
-
-  if (chosen === correct) {
-    score++;
-    buttons[chosen].classList.add('correct');
-    reaction.className = 'kefka-reaction right-reaction';
-    reactionText.textContent = pick(RIGHT_REACTIONS);
-  } else {
-    buttons[chosen].classList.add('wrong');
-    reaction.className = 'kefka-reaction wrong-reaction';
-    reactionText.textContent = pick(WRONG_REACTIONS);
+  if (q.slots.length > 1) {
+    const slotEl = document.getElementById(`slot-${currentSlot}`);
+    if (slotEl) {
+      slotEl.classList.remove('active');
+      slotEl.classList.add(isCorrect ? 'slot-correct' : 'slot-wrong');
+    }
   }
 
-  document.getElementById('next-btn').style.display = 'block';
+  currentSlot++;
+
+  if (currentSlot < q.slots.length) {
+    // More slots — brief pause then advance
+    setTimeout(() => {
+      const nextEl = document.getElementById(`slot-${currentSlot}`);
+      if (nextEl) nextEl.classList.add('active');
+      updateQuestionHeader(q, currentSlot);
+      renderChoices(q.slots[currentSlot]);
+    }, 600);
+  } else {
+    // All slots done
+    answered = true;
+    clearTimer();
+
+    const allCorrect = slotResults.every(r => r);
+    if (allCorrect) score++;
+
+    const reaction = document.getElementById('kefka-reaction');
+    reaction.className = 'kefka-reaction ' + (allCorrect ? 'right-reaction' : 'wrong-reaction');
+    document.getElementById('reaction-text').textContent = allCorrect
+      ? pick(RIGHT_REACTIONS)
+      : pick(WRONG_REACTIONS);
+
+    document.getElementById('next-btn').style.display = 'block';
+  }
 }
 
 document.getElementById('next-btn').addEventListener('click', () => {
