@@ -377,6 +377,31 @@
     .image-slot.active       .slot-timer { color: var(--gold); }
     .image-slot.slot-correct .slot-timer { color: var(--green); }
     .image-slot.slot-wrong   .slot-timer { color: var(--red); }
+    /* Combined (color+life) slot */
+    .combined-icons {
+      display: flex;
+      gap: 4px;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .combined-icon {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    .combined-slot-img {
+      max-height: 64px;
+      min-height: 28px;
+      max-width: 100%;
+      object-fit: contain;
+    }
+    /* type badge for combined slot */
+    .type-badge.combined {
+      background: rgba(212,175,55,0.08);
+      border: 1px solid rgba(212,175,55,0.35);
+      color: #e8c85a;
+    }
 
     /* ── Chaos survived counter ── */
     .chaos-score-row {
@@ -786,27 +811,34 @@ const FINAL_REACTIONS = [
 //  Add more sets here to expand Wretch mode.
 // ════════════════════════════════════════════════════════════
 const WRETCH_QUESTIONS = [
+  // Blue + Die → "Blue Die", with AccelerationBomb
   [
-    { file: "images/AccelerationBomb.png", withQMark: false },
-    { file: "images/Blue.png",             withQMark: true  },
-  ],
-  [
+    { file: "images/Blue.png",             withQMark: false },
     { file: "images/Die.png",              withQMark: false },
-    { file: "images/DontDie.png",          withQMark: true  },
+    { file: "images/AccelerationBomb.png", withQMark: false },
   ],
+  // Purple + DontDie → "Purple Don't Die", with CursedShriek
+  [
+    { file: "images/Purple.png",           withQMark: false },
+    { file: "images/DontDie.png",          withQMark: false },
+    { file: "images/CursedShriek.png",     withQMark: false },
+  ],
+  // FireChariot + WaterDonut — no color/life pair
   [
     { file: "images/FireChariot.png",      withQMark: false },
     { file: "images/WaterDonut.png",       withQMark: true  },
   ],
+  // Blue(QMark=Purple) + Die → "Purple Die", with ForkedLightning
   [
-    { file: "images/CompressedWater.png",  withQMark: false },
-    { file: "images/ForkedLightning.png",  withQMark: true  },
-    { file: "images/Purple.png",           withQMark: false },
+    { file: "images/Blue.png",             withQMark: true  },
+    { file: "images/Die.png",              withQMark: false },
+    { file: "images/ForkedLightning.png",  withQMark: false },
   ],
+  // Blue + Die(QMark=Don't Die) → "Blue Don't Die", with CompressedWater
   [
-    { file: "images/CursedShriek.png",     withQMark: true  },
-    { file: "images/AccelerationBomb.png", withQMark: true  },
     { file: "images/Blue.png",             withQMark: false },
+    { file: "images/Die.png",              withQMark: true  },
+    { file: "images/CompressedWater.png",  withQMark: false },
   ],
 ];
 
@@ -838,6 +870,48 @@ const FILE_DISPLAY_ORDER = {
 
 const NO_TIMER_FILES = new Set(['images/Blue.png', 'images/Purple.png']);
 
+// All possible combined answers for the color+life pair
+const COMBINED_CHOICES = ["Blue Die", "Blue Don't Die", "Purple Die", "Purple Don't Die"];
+
+const COLOR_FILES = new Set(['images/Blue.png', 'images/Purple.png']);
+const LIFE_FILES  = new Set(['images/Die.png',  'images/DontDie.png']);
+
+function buildCombinedSlot(colorFile, colorWithQMark, lifeFile, lifeWithQMark) {
+  const colorData = IMAGE_DATA.find(d => d.file === colorFile);
+  const lifeData  = IMAGE_DATA.find(d => d.file === lifeFile);
+  const colorValue = colorWithQMark ? colorData.modified : colorData.primary;
+  const lifeValue  = lifeWithQMark  ? lifeData.modified  : lifeData.primary;
+  const answer = `${colorValue} ${lifeValue}`;
+  return {
+    type: 'combined',
+    colorFile, colorWithQMark,
+    lifeFile,  lifeWithQMark,
+    answer,
+    options: [...COMBINED_CHOICES],
+    correctIndex: COMBINED_CHOICES.indexOf(answer),
+    timerValue: null,
+  };
+}
+
+// Collapses a color slot + life slot into one combined slot (placed at position 0)
+function mergeColorLifePair(slots) {
+  const colorSlot = slots.find(s => COLOR_FILES.has(s.file));
+  const lifeSlot  = slots.find(s => LIFE_FILES.has(s.file));
+  if (!colorSlot || !lifeSlot) return slots;
+  const combined = buildCombinedSlot(
+    colorSlot.file, colorSlot.withQMark,
+    lifeSlot.file,  lifeSlot.withQMark
+  );
+  return [combined, ...slots.filter(s => s !== colorSlot && s !== lifeSlot)];
+}
+
+function hasCoOccurrenceViolation(set) {
+  const files = new Set(set.map(s => s.file));
+  const hasColor = [...COLOR_FILES].some(f => files.has(f));
+  const hasLife  = [...LIFE_FILES].some(f => files.has(f));
+  return hasColor !== hasLife;
+}
+
 function sortSlots(slots) {
   return [...slots].sort((a, b) =>
     (FILE_DISPLAY_ORDER[a.file] ?? 99) - (FILE_DISPLAY_ORDER[b.file] ?? 99)
@@ -850,7 +924,7 @@ function sortSlots(slots) {
 function assignTimerOrder(slots) {
   const numberedIdx = slots
     .map((s, i) => i)
-    .filter(i => !NO_TIMER_FILES.has(slots[i].file));
+    .filter(i => slots[i].type === 'combined' || !NO_TIMER_FILES.has(slots[i].file));
 
   const timerValues = shuffle(numberedIdx.map((_, k) => (k + 1) * 10));
 
@@ -920,9 +994,10 @@ function buildChaosQuestion() {
       pool = pool.filter(d => d.file !== drop);
     }
   }
-  const { slots, answerOrder } = assignTimerOrder(
+  const rawSlots = mergeColorLifePair(
     sortSlots(shuffle(pool).map(entry => buildSlot(entry.file, Math.random() < 0.5)))
   );
+  const { slots, answerOrder } = assignTimerOrder(rawSlots);
   return { slots, answerOrder };
 }
 
@@ -938,10 +1013,15 @@ function buildQuestions() {
           console.error('KefkaSays: conflicting images in set — skipping', set.map(s => s.file));
           return false;
         }
+        if (hasCoOccurrenceViolation(set)) {
+          console.error('KefkaSays: color (Blue/Purple) and life (Die/DontDie) must appear together — skipping', set.map(s => s.file));
+          return false;
+        }
         return true;
       })
       .map(set => {
-        const { slots, answerOrder } = assignTimerOrder(sortSlots(set.map(s => buildSlot(s.file, s.withQMark))));
+        const rawSlots = mergeColorLifePair(sortSlots(set.map(s => buildSlot(s.file, s.withQMark))));
+        const { slots, answerOrder } = assignTimerOrder(rawSlots);
         return { slots, answerOrder };
       });
   }
@@ -1183,23 +1263,48 @@ function renderImageArea(q) {
       slotEl.className = 'image-slot' + (isFirstActive ? ' active' : '');
       slotEl.id = `slot-${i}`;
 
-      if (slot.withQMark) {
-        const qmark = document.createElement('img');
-        qmark.src = 'images/QuestionMark.png';
-        qmark.alt = 'QMark';
-        qmark.className = 'slot-qmark';
-        slotEl.appendChild(qmark);
+      if (slot.type === 'combined') {
+        // Two icons side by side in one slot
+        const combinedIcons = document.createElement('div');
+        combinedIcons.className = 'combined-icons';
+        for (const [file, withQM] of [[slot.colorFile, slot.colorWithQMark], [slot.lifeFile, slot.lifeWithQMark]]) {
+          const col = document.createElement('div');
+          col.className = 'combined-icon';
+          if (withQM) {
+            const qm = document.createElement('img');
+            qm.src = 'images/QuestionMark.png';
+            qm.className = 'slot-qmark';
+            col.appendChild(qm);
+          } else {
+            const sp = document.createElement('div');
+            sp.className = 'slot-qmark-spacer';
+            col.appendChild(sp);
+          }
+          const img = document.createElement('img');
+          img.src = file;
+          img.className = 'combined-slot-img';
+          col.appendChild(img);
+          combinedIcons.appendChild(col);
+        }
+        slotEl.appendChild(combinedIcons);
       } else {
-        const spacer = document.createElement('div');
-        spacer.className = 'slot-qmark-spacer';
-        slotEl.appendChild(spacer);
+        if (slot.withQMark) {
+          const qmark = document.createElement('img');
+          qmark.src = 'images/QuestionMark.png';
+          qmark.alt = 'QMark';
+          qmark.className = 'slot-qmark';
+          slotEl.appendChild(qmark);
+        } else {
+          const spacer = document.createElement('div');
+          spacer.className = 'slot-qmark-spacer';
+          slotEl.appendChild(spacer);
+        }
+        const img = document.createElement('img');
+        img.src = slot.file;
+        img.alt = `Slot ${i + 1}`;
+        img.className = 'slot-img';
+        slotEl.appendChild(img);
       }
-
-      const img = document.createElement('img');
-      img.src = slot.file;
-      img.alt = `Slot ${i + 1}`;
-      img.className = 'slot-img';
-      slotEl.appendChild(img);
 
       if (slot.timerValue !== null && slot.timerValue !== undefined) {
         const timerLabel = document.createElement('div');
@@ -1220,11 +1325,17 @@ function updateQuestionHeader(q, slotIdx) {
   const isMulti = q.slots.length > 1;
 
   if (isMulti) {
-    badge.textContent = `${slotIdx + 1} OF ${q.slots.length}`;
-    badge.className = 'type-badge ' + (slot.withQMark ? 'modified' : 'primary');
-    document.getElementById('q-text').textContent = slot.withQMark
-      ? `Image ${slotIdx + 1}: The Question Mark has changed this. What is its value?`
-      : `Image ${slotIdx + 1}: What is the value of this image?`;
+    if (slot.type === 'combined') {
+      badge.textContent = 'COMBINED';
+      badge.className = 'type-badge combined';
+      document.getElementById('q-text').textContent = 'What is the combined value of these two images?';
+    } else {
+      badge.textContent = `${slotIdx + 1} OF ${q.slots.length}`;
+      badge.className = 'type-badge ' + (slot.withQMark ? 'modified' : 'primary');
+      document.getElementById('q-text').textContent = slot.withQMark
+        ? `Image ${slotIdx + 1}: The Question Mark has changed this. What is its value?`
+        : `Image ${slotIdx + 1}: What is the value of this image?`;
+    }
   } else {
     badge.textContent = slot.withQMark ? '? MODIFIED' : 'BASE VALUE';
     badge.className = 'type-badge ' + (slot.withQMark ? 'modified' : 'primary');
