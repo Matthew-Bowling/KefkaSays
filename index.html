@@ -363,16 +363,16 @@
     }
     .image-slot .slot-img {
       max-width: 100%;
-      max-height: 72px;
-      min-height: 32px;
+      max-height: 110px;
+      min-height: 60px;
       object-fit: contain;
     }
     .slot-timer {
       font-family: 'Cinzel', Georgia, serif;
-      font-size: 0.6rem;
-      letter-spacing: 1px;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
       color: var(--dim);
-      margin-top: 2px;
+      margin-top: 4px;
     }
     .image-slot.active       .slot-timer { color: var(--gold); }
     .image-slot.slot-correct .slot-timer { color: var(--green); }
@@ -1087,8 +1087,8 @@ function autoFail() {
 
   const q = activeQuestions[currentQ];
 
-  // Mark current and remaining slots as wrong in multi mode
-  if (q.slots.length > 1) {
+  // Mark current and remaining slots as wrong in multi mode (not in Chaos)
+  if (q.slots.length > 1 && selectedDifficulty !== 'chaos') {
     for (let step = currentSlot; step < q.answerOrder.length; step++) {
       const slotEl = document.getElementById(`slot-${q.answerOrder[step]}`);
       if (slotEl) {
@@ -1178,7 +1178,7 @@ function renderImageArea(q) {
   } else {
     area.className = 'image-area multi';
     q.slots.forEach((slot, i) => {
-      const isFirstActive = q.answerOrder[0] === i;
+      const isFirstActive = selectedDifficulty !== 'chaos' && q.answerOrder[0] === i;
       const slotEl = document.createElement('div');
       slotEl.className = 'image-slot' + (isFirstActive ? ' active' : '');
       slotEl.id = `slot-${i}`;
@@ -1293,7 +1293,7 @@ function selectAnswer(chosen) {
   });
   buttons[chosen].classList.add(isCorrect ? 'correct' : 'wrong');
 
-  if (q.slots.length > 1) {
+  if (q.slots.length > 1 && selectedDifficulty !== 'chaos') {
     const slotEl = document.getElementById(`slot-${slotIdx}`);
     if (slotEl) {
       slotEl.classList.remove('active');
@@ -1307,8 +1307,10 @@ function selectAnswer(chosen) {
     // More slots — brief pause then advance
     setTimeout(() => {
       const nextSlotIdx = q.answerOrder[currentSlot];
-      const nextEl = document.getElementById(`slot-${nextSlotIdx}`);
-      if (nextEl) nextEl.classList.add('active');
+      if (selectedDifficulty !== 'chaos') {
+        const nextEl = document.getElementById(`slot-${nextSlotIdx}`);
+        if (nextEl) nextEl.classList.add('active');
+      }
       updateQuestionHeader(q, nextSlotIdx);
       renderChoices(q.slots[nextSlotIdx]);
     }, 600);
