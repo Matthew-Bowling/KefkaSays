@@ -1379,21 +1379,35 @@ function renderChoices(slot) {
 // ════════════════════════════════════════════════════════════
 //  KEFKA GIF ANIMATIONS
 // ════════════════════════════════════════════════════════════
-let kefkaTimer = null;
+let kefkaTimer  = null;
+let _kefkaFrames = [];
+let _kefkaIdx   = 0;
 
 function clearKefkaTimer() {
   if (kefkaTimer !== null) { clearTimeout(kefkaTimer); kefkaTimer = null; }
 }
 
+// Module-level step so setTimeout can reference it by name without a closure
+function _kefkaAdvance() {
+  if (_kefkaIdx < _kefkaFrames.length) {
+    document.getElementById('kefka-gif').src = _kefkaFrames[_kefkaIdx++];
+    kefkaTimer = setTimeout(_kefkaAdvance, 450);
+  } else {
+    _kefkaFrames = [];
+    document.getElementById('kefka-gif').src = 'images/KefkaLaugh.gif';
+    kefkaTimer = null;
+  }
+}
+
 function kefkaLaugh() {
   clearKefkaTimer();
+  _kefkaFrames = [];
   document.getElementById('kefka-gif').src = 'images/KefkaLaugh.gif';
 }
 
 function kefkaCorrect() {
   clearKefkaTimer();
-  const gif = document.getElementById('kefka-gif');
-  const seq = [
+  _kefkaFrames = [
     'images/KefkaShocked.gif',
     'images/KefkaAngry.gif',
     'images/KefkaShocked.gif',
@@ -1401,16 +1415,13 @@ function kefkaCorrect() {
     'images/KefkaShocked.gif',
     'images/KefkaAngry.gif',
   ];
-  let i = 0;
-  function next() {
-    if (i < seq.length) { gif.src = seq[i++]; kefkaTimer = setTimeout(next, 400); }
-    else { gif.src = 'images/KefkaLaugh.gif'; kefkaTimer = null; }
-  }
-  next();
+  _kefkaIdx = 0;
+  _kefkaAdvance();
 }
 
 function kefkaWrong() {
   clearKefkaTimer();
+  _kefkaFrames = [];
   document.getElementById('kefka-gif').src = 'images/KefkaWrong.gif';
   kefkaTimer = setTimeout(kefkaLaugh, 2000);
 }
