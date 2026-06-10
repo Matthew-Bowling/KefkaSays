@@ -148,6 +148,14 @@
     /* ── Quiz ── */
     #quiz-screen { gap: 16px; }
 
+    #kefka-gif {
+      display: block;
+      height: 130px;
+      width: auto;
+      margin: 0 auto;
+      image-rendering: auto;
+    }
+
     /* Image display area */
     .image-area {
       width: 100%;
@@ -659,6 +667,8 @@
     </div>
     <span class="timer-number" id="timer-number">30</span>
   </div>
+
+  <img id="kefka-gif" src="images/KefkaLaugh.gif" alt="Kefka">
 
   <div class="image-area" id="image-area"></div>
 
@@ -1187,6 +1197,8 @@ function autoFail() {
     if (i === slot.correctIndex) btn.classList.add('reveal-correct');
   });
 
+  kefkaWrong();
+
   const reaction = document.getElementById('kefka-reaction');
   reaction.className = 'kefka-reaction wrong-reaction';
   document.getElementById('reaction-text').textContent = pick(TIME_UP_REACTIONS);
@@ -1364,6 +1376,45 @@ function renderChoices(slot) {
   });
 }
 
+// ════════════════════════════════════════════════════════════
+//  KEFKA GIF ANIMATIONS
+// ════════════════════════════════════════════════════════════
+let kefkaTimer = null;
+
+function clearKefkaTimer() {
+  if (kefkaTimer !== null) { clearTimeout(kefkaTimer); kefkaTimer = null; }
+}
+
+function kefkaLaugh() {
+  clearKefkaTimer();
+  document.getElementById('kefka-gif').src = 'images/KefkaLaugh.gif';
+}
+
+function kefkaCorrect() {
+  clearKefkaTimer();
+  const gif = document.getElementById('kefka-gif');
+  const seq = [
+    'images/KefkaShocked.gif',
+    'images/KefkaAngry.gif',
+    'images/KefkaShocked.gif',
+    'images/KefkaAngry.gif',
+    'images/KefkaShocked.gif',
+    'images/KefkaAngry.gif',
+  ];
+  let i = 0;
+  function next() {
+    if (i < seq.length) { gif.src = seq[i++]; kefkaTimer = setTimeout(next, 400); }
+    else { gif.src = 'images/KefkaLaugh.gif'; kefkaTimer = null; }
+  }
+  next();
+}
+
+function kefkaWrong() {
+  clearKefkaTimer();
+  document.getElementById('kefka-gif').src = 'images/KefkaWrong.gif';
+  kefkaTimer = setTimeout(kefkaLaugh, 2000);
+}
+
 function loadQuestion() {
   answered = false;
   currentSlot = 0;
@@ -1388,6 +1439,7 @@ function loadQuestion() {
   document.getElementById('reaction-text').textContent = '';
   document.getElementById('next-btn').style.display = 'none';
 
+  kefkaLaugh();
   startTimer();
 }
 
@@ -1437,6 +1489,8 @@ function selectAnswer(chosen) {
 
     const allCorrect = slotResults.every(r => r);
     if (allCorrect) score++;
+
+    allCorrect ? kefkaCorrect() : kefkaWrong();
 
     const reaction = document.getElementById('kefka-reaction');
     reaction.className = 'kefka-reaction ' + (allCorrect ? 'right-reaction' : 'wrong-reaction');
