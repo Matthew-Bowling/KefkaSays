@@ -22,6 +22,7 @@ let currentSlot = 0;
 let slotResults = [];
 let score = 0;
 let questionsAttempted = 0;
+let debuffsAnswered = 0;
 let answered = false;
 let activeQuestions = [];
 let timerInterval = null;
@@ -128,13 +129,13 @@ function autoFail() {
 
   const q = activeQuestions[currentQ];
 
-  // Mark current and remaining slots as wrong in multi mode (not in Chaos)
-  if (q.slots.length > 1 && selectedDifficulty !== 'chaos') {
+  // Mark current and remaining slots visually
+  if (q.slots.length > 1) {
     for (let step = currentSlot; step < q.answerOrder.length; step++) {
       const slotEl = document.getElementById(`slot-${q.answerOrder[step]}`);
       if (slotEl) {
         slotEl.classList.remove('active');
-        slotEl.classList.add('slot-wrong');
+        slotEl.classList.add(selectedDifficulty === 'chaos' ? 'slot-done' : 'slot-wrong');
       }
     }
   }
@@ -146,6 +147,7 @@ function autoFail() {
   // Record all unanswered slots as wrong
   for (let step = currentSlot; step < q.answerOrder.length; step++) {
     const s = q.slots[q.answerOrder[step]];
+    debuffsAnswered++;
     if (s.type === 'combined') {
       recordAnswer(s.colorFile, false);
       recordAnswer(s.lifeFile, false);
@@ -193,6 +195,7 @@ function startGame() {
   currentQ = 0;
   score = 0;
   questionsAttempted = 0;
+  debuffsAnswered = 0;
   activeQuestions = shuffle(buildQuestions());
   setChaosUI(selectedDifficulty === 'chaos' || selectedDifficulty === 'normal');
   showScreen('quiz');
@@ -287,7 +290,7 @@ function renderImageArea(q) {
       if (slot.timerValue !== null && slot.timerValue !== undefined) {
         const timerLabel = document.createElement('div');
         timerLabel.className = 'slot-timer';
-        timerLabel.textContent = slot.timerValue;
+        timerLabel.textContent = slot.timerValue < 60 ? slot.timerValue : (slot.timerValue / 10 - 5) + 'm';
         slotEl.appendChild(timerLabel);
       }
 
@@ -413,6 +416,7 @@ function selectAnswer(chosen) {
   const isCorrect = chosen === correct;
 
   slotResults.push(isCorrect);
+  debuffsAnswered++;
   isCorrect ? kefkaCorrect() : kefkaWrong();
 
   if (slot.type === 'combined') {
@@ -429,11 +433,15 @@ function selectAnswer(chosen) {
   });
   buttons[chosen].classList.add(isCorrect ? 'correct' : 'wrong');
 
-  if (q.slots.length > 1 && selectedDifficulty !== 'chaos') {
+  if (q.slots.length > 1) {
     const slotEl = document.getElementById(`slot-${slotIdx}`);
     if (slotEl) {
       slotEl.classList.remove('active');
-      slotEl.classList.add(isCorrect ? 'slot-correct' : 'slot-wrong');
+      if (selectedDifficulty === 'chaos') {
+        slotEl.classList.add('slot-done');
+      } else {
+        slotEl.classList.add(isCorrect ? 'slot-correct' : 'slot-wrong');
+      }
     }
   }
 
@@ -490,7 +498,7 @@ function showScore() {
   clearTimer();
   let verdict;
 
-  document.getElementById('final-attempted').textContent = questionsAttempted;
+  document.getElementById('final-attempted').textContent = debuffsAnswered;
 
   if (selectedDifficulty === 'chaos' || selectedDifficulty === 'normal') {
     document.getElementById('final-score').textContent = score;

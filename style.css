@@ -352,6 +352,10 @@ body {
   border-color: var(--red);
   background: rgba(204,34,0,0.08);
 }
+.image-slot.slot-done {
+  border-color: rgba(150,150,150,0.35);
+  background: rgba(150,150,150,0.04);
+}
 .image-slot .slot-qmark {
   height: 14px;
   width: auto;
