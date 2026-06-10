@@ -844,6 +844,28 @@ function sortSlots(slots) {
   );
 }
 
+// Assigns shuffled timer values to numbered slots and returns
+// the updated slots plus an answerOrder array (slot indices in
+// ascending timer order — lowest number answered first).
+function assignTimerOrder(slots) {
+  const numberedIdx = slots
+    .map((s, i) => i)
+    .filter(i => !NO_TIMER_FILES.has(slots[i].file));
+
+  const timerValues = shuffle(numberedIdx.map((_, k) => (k + 1) * 10));
+
+  const updatedSlots = slots.map(s => ({ ...s, timerValue: null }));
+  numberedIdx.forEach((slotIdx, k) => {
+    updatedSlots[slotIdx] = { ...updatedSlots[slotIdx], timerValue: timerValues[k] };
+  });
+
+  const answerOrder = [...numberedIdx].sort(
+    (a, b) => updatedSlots[a].timerValue - updatedSlots[b].timerValue
+  );
+
+  return { slots: updatedSlots, answerOrder };
+}
+
 function hasConflict(slots) {
   const files = slots.map(s => s.file);
   return CONFLICTING_PAIRS.some(([a, b]) => files.includes(a) && files.includes(b));
@@ -898,8 +920,10 @@ function buildChaosQuestion() {
       pool = pool.filter(d => d.file !== drop);
     }
   }
-  const slots = sortSlots(shuffle(pool).map(entry => buildSlot(entry.file, Math.random() < 0.5)));
-  return { slots };
+  const { slots, answerOrder } = assignTimerOrder(
+    sortSlots(shuffle(pool).map(entry => buildSlot(entry.file, Math.random() < 0.5)))
+  );
+  return { slots, answerOrder };
 }
 
 function buildChaosQuestions() {
@@ -916,7 +940,10 @@ function buildQuestions() {
         }
         return true;
       })
-      .map(set => ({ slots: sortSlots(set.map(s => buildSlot(s.file, s.withQMark))) }));
+      .map(set => {
+        const { slots, answerOrder } = assignTimerOrder(sortSlots(set.map(s => buildSlot(s.file, s.withQMark))));
+        return { slots, answerOrder };
+      });
   }
   if (selectedDifficulty === 'chaos') {
     return buildChaosQuestions();
@@ -925,8 +952,8 @@ function buildQuestions() {
   // Fool: single-slot questions (one per image, primary + modified)
   const pool = [];
   IMAGE_DATA.forEach(entry => {
-    pool.push({ slots: [buildSlot(entry.file, false)] });
-    pool.push({ slots: [buildSlot(entry.file, true)]  });
+    pool.push({ slots: [buildSlot(entry.file, false)], answerOrder: [0] });
+    pool.push({ slots: [buildSlot(entry.file, true)],  answerOrder: [0] });
   });
   return pool;
 }
@@ -1062,8 +1089,8 @@ function autoFail() {
 
   // Mark current and remaining slots as wrong in multi mode
   if (q.slots.length > 1) {
-    for (let i = currentSlot; i < q.slots.length; i++) {
-      const slotEl = document.getElementById(`slot-${i}`);
+    for (let step = currentSlot; step < q.answerOrder.length; step++) {
+      const slotEl = document.getElementById(`slot-${q.answerOrder[step]}`);
       if (slotEl) {
         slotEl.classList.remove('active');
         slotEl.classList.add('slot-wrong');
@@ -1072,7 +1099,8 @@ function autoFail() {
   }
 
   // Reveal correct answer for the slot that was active when time ran out
-  const slot = q.slots[currentSlot] || q.slots[q.slots.length - 1];
+  const activeIdx = q.answerOrder[currentSlot] ?? q.answerOrder[q.answerOrder.length - 1];
+  const slot = q.slots[activeIdx];
   document.querySelectorAll('.choice-btn').forEach((btn, i) => {
     btn.disabled = true;
     if (i === slot.correctIndex) btn.classList.add('reveal-correct');
@@ -1149,10 +1177,10 @@ function renderImageArea(q) {
     }
   } else {
     area.className = 'image-area multi';
-    let timerCount = 0;
     q.slots.forEach((slot, i) => {
+      const isFirstActive = q.answerOrder[0] === i;
       const slotEl = document.createElement('div');
-      slotEl.className = 'image-slot' + (i === 0 ? ' active' : '');
+      slotEl.className = 'image-slot' + (isFirstActive ? ' active' : '');
       slotEl.id = `slot-${i}`;
 
       if (slot.withQMark) {
@@ -1173,11 +1201,10 @@ function renderImageArea(q) {
       img.className = 'slot-img';
       slotEl.appendChild(img);
 
-      if (!NO_TIMER_FILES.has(slot.file)) {
-        timerCount++;
+      if (slot.timerValue !== null && slot.timerValue !== undefined) {
         const timerLabel = document.createElement('div');
         timerLabel.className = 'slot-timer';
-        timerLabel.textContent = timerCount * 10;
+        timerLabel.textContent = slot.timerValue;
         slotEl.appendChild(timerLabel);
       }
 
@@ -1238,8 +1265,8 @@ function loadQuestion() {
   document.getElementById('q-number').textContent = `QUESTION ${currentQ + 1}`;
 
   renderImageArea(q);
-  updateQuestionHeader(q, 0);
-  renderChoices(q.slots[0]);
+  updateQuestionHeader(q, q.answerOrder[0]);
+  renderChoices(q.slots[q.answerOrder[0]]);
 
   document.getElementById('kefka-reaction').className = 'kefka-reaction';
   document.getElementById('reaction-text').textContent = '';
@@ -1252,7 +1279,8 @@ function selectAnswer(chosen) {
   if (answered) return;
 
   const q = activeQuestions[currentQ];
-  const slot = q.slots[currentSlot];
+  const slotIdx = q.answerOrder[currentSlot];
+  const slot = q.slots[slotIdx];
   const correct = slot.correctIndex;
   const isCorrect = chosen === correct;
 
@@ -1266,7 +1294,7 @@ function selectAnswer(chosen) {
   buttons[chosen].classList.add(isCorrect ? 'correct' : 'wrong');
 
   if (q.slots.length > 1) {
-    const slotEl = document.getElementById(`slot-${currentSlot}`);
+    const slotEl = document.getElementById(`slot-${slotIdx}`);
     if (slotEl) {
       slotEl.classList.remove('active');
       slotEl.classList.add(isCorrect ? 'slot-correct' : 'slot-wrong');
@@ -1275,13 +1303,14 @@ function selectAnswer(chosen) {
 
   currentSlot++;
 
-  if (currentSlot < q.slots.length) {
+  if (currentSlot < q.answerOrder.length) {
     // More slots — brief pause then advance
     setTimeout(() => {
-      const nextEl = document.getElementById(`slot-${currentSlot}`);
+      const nextSlotIdx = q.answerOrder[currentSlot];
+      const nextEl = document.getElementById(`slot-${nextSlotIdx}`);
       if (nextEl) nextEl.classList.add('active');
-      updateQuestionHeader(q, currentSlot);
-      renderChoices(q.slots[currentSlot]);
+      updateQuestionHeader(q, nextSlotIdx);
+      renderChoices(q.slots[nextSlotIdx]);
     }, 600);
   } else {
     // All slots done
