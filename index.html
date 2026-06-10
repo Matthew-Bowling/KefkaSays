@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KefkaSays — Trivia of Ruin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0008;
+      --panel: #120012;
+      --border: #6a0dad;
+      --gold: #d4af37;
+      --red: #cc2200;
+      --green: #22aa55;
+      --text: #e8dcc8;
+      --dim: #6a5f55;
+      --kefka-purple: #8a2be2;
+      --shadow: 0 0 18px rgba(106,13,173,0.6);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Cinzel', Georgia, serif;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(106,13,173,0.07) 39px, rgba(106,13,173,0.07) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(106,13,173,0.07) 39px, rgba(106,13,173,0.07) 40px);
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: min(700px, 96vw);
+      max-height: 96vh;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--kefka-purple) transparent;
+    }
+    .screen.active { display: flex; }
+
+    .panel {
+      width: 100%;
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      box-shadow: var(--shadow), inset 0 0 40px rgba(0,0,0,0.6);
+      padding: 28px 32px;
+      position: relative;
+    }
+    .panel::before {
+      content: '';
+      position: absolute; inset: 4px;
+      border: 1px solid rgba(106,13,173,0.3);
+      border-radius: 2px;
+      pointer-events: none;
+    }
+
+    /* ── Title ── */
+    #title-screen { gap: 24px; }
+
+    .title-logo {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: clamp(2rem, 6vw, 3.2rem);
+      color: var(--gold);
+      text-shadow: 0 0 20px rgba(212,175,55,0.7), 0 0 40px rgba(212,175,55,0.3);
+      text-align: center;
+      letter-spacing: 4px;
+      line-height: 1.2;
+    }
+    .title-subtitle {
+      font-size: 0.85rem;
+      color: var(--dim);
+      text-align: center;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-top: 8px;
+    }
+    .kefka-quote {
+      border-left: 3px solid var(--kefka-purple);
+      padding: 12px 16px;
+      font-style: italic;
+      color: #c8b8e0;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+    .kefka-quote cite {
+      display: block;
+      margin-top: 8px;
+      font-style: normal;
+      font-size: 0.75rem;
+      color: var(--dim);
+      letter-spacing: 2px;
+    }
+
+    .btn {
+      font-family: 'Cinzel', Georgia, serif;
+      font-size: 0.9rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 12px 36px;
+      border: 2px solid var(--gold);
+      background: transparent;
+      color: var(--gold);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+      border-radius: 2px;
+    }
+    .btn:hover {
+      background: var(--gold);
+      color: var(--bg);
+      box-shadow: 0 0 20px rgba(212,175,55,0.5);
+    }
+    .btn.danger { border-color: var(--red); color: var(--red); }
+    .btn.danger:hover {
+      background: var(--red); color: #fff;
+      box-shadow: 0 0 20px rgba(204,34,0,0.5);
+    }
+
+    /* ── Progress ── */
+    .progress-bar-wrap {
+      width: 100%; height: 4px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 2px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--kefka-purple), var(--gold));
+      transition: width 0.4s ease;
+      border-radius: 2px;
+    }
+    .progress-label {
+      font-size: 0.72rem; color: var(--dim);
+      letter-spacing: 2px; text-align: right; margin-top: 4px;
+    }
+
+    /* ── Quiz ── */
+    #quiz-screen { gap: 16px; }
+
+    /* Image display area */
+    .image-area {
+      width: 100%;
+      background: #050005;
+      border: 1px solid rgba(106,13,173,0.4);
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      min-height: 160px;
+      gap: 0;
+    }
+
+    /* Single image */
+    .image-area.single img {
+      max-width: 100%;
+      max-height: 220px;
+      object-fit: contain;
+    }
+
+    /* Dual image: [image] [+] [?] */
+    .image-area.dual {
+      gap: 16px;
+    }
+    .image-area.dual .img-slot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      max-width: 42%;
+    }
+    .image-area.dual .img-slot img {
+      max-width: 100%;
+      max-height: 180px;
+      object-fit: contain;
+    }
+    .image-area.dual .plus-sign {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: 2rem;
+      color: var(--kefka-purple);
+      text-shadow: 0 0 12px rgba(138,43,226,0.7);
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .question-number {
+      font-size: 0.7rem;
+      color: var(--kefka-purple);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    .question-text {
+      font-size: clamp(0.95rem, 2.5vw, 1.05rem);
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    /* Question type badge */
+    .type-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 2px;
+      margin-bottom: 6px;
+    }
+    .type-badge.primary {
+      background: rgba(212,175,55,0.1);
+      border: 1px solid rgba(212,175,55,0.4);
+      color: var(--gold);
+    }
+    .type-badge.modified {
+      background: rgba(138,43,226,0.15);
+      border: 1px solid rgba(138,43,226,0.5);
+      color: #c090ff;
+    }
+
+    .choices { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+
+    .choice-btn {
+      width: 100%;
+      text-align: left;
+      padding: 13px 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(106,13,173,0.35);
+      border-radius: 2px;
+      color: var(--text);
+      font-family: 'Cinzel', Georgia, serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: border-color 0.12s, background 0.12s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .choice-btn:hover:not(:disabled) {
+      border-color: var(--gold);
+      background: rgba(212,175,55,0.08);
+    }
+    .choice-btn:disabled { cursor: default; }
+    .choice-btn.correct {
+      border-color: var(--green);
+      background: rgba(34,170,85,0.12);
+      color: #7fffaa;
+    }
+    .choice-btn.wrong {
+      border-color: var(--red);
+      background: rgba(204,34,0,0.12);
+      color: #ff9988;
+    }
+    .choice-btn.reveal-correct {
+      border-color: var(--green);
+      opacity: 0.5;
+    }
+    .choice-label {
+      display: inline-block;
+      width: 22px; height: 22px;
+      line-height: 22px;
+      text-align: center;
+      border: 1px solid currentColor;
+      border-radius: 2px;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .kefka-reaction {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 2px;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      font-style: italic;
+      animation: fadeSlideIn 0.3s ease;
+      display: none;
+    }
+    .kefka-reaction.wrong-reaction {
+      background: rgba(204,34,0,0.1);
+      border: 1px solid rgba(204,34,0,0.5);
+      color: #ffb0a0;
+      display: block;
+    }
+    .kefka-reaction.right-reaction {
+      background: rgba(34,170,85,0.08);
+      border: 1px solid rgba(34,170,85,0.4);
+      color: #a0ffcc;
+      display: block;
+    }
+    .kefka-reaction .speaker {
+      font-style: normal;
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      color: var(--kefka-purple);
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .next-wrap { display: flex; justify-content: flex-end; width: 100%; }
+
+    /* ── Timer ── */
+    .timer-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .timer-label {
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      color: var(--dim);
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .timer-bar-wrap {
+      flex: 1;
+      height: 6px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .timer-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--green);
+      border-radius: 3px;
+      transition: width 0.95s linear, background 0.4s;
+    }
+    .timer-bar-fill.warning { background: var(--gold); }
+    .timer-bar-fill.danger  { background: var(--red); animation: timerPulse 0.5s ease-in-out infinite alternate; }
+    .timer-number {
+      font-family: 'Cinzel', Georgia, serif;
+      font-size: 0.85rem;
+      color: var(--text);
+      min-width: 22px;
+      text-align: right;
+      flex-shrink: 0;
+      transition: color 0.3s;
+    }
+    .timer-number.warning { color: var(--gold); }
+    .timer-number.danger  { color: var(--red); }
+    @keyframes timerPulse {
+      from { opacity: 1; }
+      to   { opacity: 0.45; }
+    }
+
+    /* ── Difficulty Toggle ── */
+    .diff-label {
+      font-size: 0.7rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--dim);
+      text-align: center;
+    }
+    .diff-toggle {
+      display: flex;
+      gap: 0;
+      border: 1px solid rgba(106,13,173,0.5);
+      border-radius: 3px;
+      overflow: hidden;
+      width: 100%;
+    }
+    .diff-btn {
+      flex: 1;
+      padding: 10px 4px;
+      background: transparent;
+      border: none;
+      border-right: 1px solid rgba(106,13,173,0.5);
+      color: var(--dim);
+      font-family: 'Cinzel', Georgia, serif;
+      font-size: 0.78rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .diff-btn:last-child { border-right: none; }
+    .diff-btn:hover:not(.selected) {
+      background: rgba(106,13,173,0.15);
+      color: var(--text);
+    }
+    .diff-btn.selected {
+      background: rgba(212,175,55,0.12);
+      color: var(--gold);
+    }
+    .diff-btn.selected .diff-tier { color: var(--gold); }
+    .diff-tier {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: 0.85rem;
+      color: var(--dim);
+      transition: color 0.15s;
+    }
+    .diff-sub {
+      font-size: 0.62rem;
+      letter-spacing: 1px;
+      opacity: 0.7;
+    }
+
+    /* ── Score ── */
+    #score-screen { gap: 20px; }
+
+    .score-display { text-align: center; padding: 20px 0; }
+    .score-number {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: clamp(3rem, 10vw, 5rem);
+      color: var(--gold);
+      text-shadow: 0 0 30px rgba(212,175,55,0.6);
+      line-height: 1;
+    }
+    .score-denom { font-size: 1.1rem; color: var(--dim); letter-spacing: 3px; }
+    .score-label {
+      margin-top: 8px;
+      font-size: 0.75rem; color: var(--dim);
+      letter-spacing: 3px; text-transform: uppercase;
+    }
+    .score-verdict {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: clamp(1rem, 3vw, 1.4rem);
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    .final-reaction {
+      border-left: 3px solid var(--kefka-purple);
+      padding: 16px 20px;
+      font-style: italic;
+      color: #c8b8e0;
+      font-size: 0.9rem;
+      line-height: 1.8;
+    }
+    .final-reaction .speaker {
+      font-style: normal;
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      color: var(--kefka-purple);
+      margin-bottom: 6px;
+      display: block;
+    }
+    .score-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+    /* Decorative corners */
+    .corner-deco {
+      position: absolute;
+      width: 12px; height: 12px;
+      border-color: var(--gold);
+      border-style: solid;
+    }
+    .corner-deco.tl { top: 8px; left: 8px;   border-width: 2px 0 0 2px; }
+    .corner-deco.tr { top: 8px; right: 8px;  border-width: 2px 2px 0 0; }
+    .corner-deco.bl { bottom: 8px; left: 8px;  border-width: 0 0 2px 2px; }
+    .corner-deco.br { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--kefka-purple); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     TITLE SCREEN
+════════════════════════════════════════ -->
+<div id="title-screen" class="screen active">
+  <div class="panel" style="text-align:center; padding:36px 32px;">
+    <div class="corner-deco tl"></div><div class="corner-deco tr"></div>
+    <div class="corner-deco bl"></div><div class="corner-deco br"></div>
+    <div class="title-logo">KEFKA<br>SAYS</div>
+    <div class="title-subtitle">Trivia of Ruin &nbsp;·&nbsp; A Quiz from the God of Magic</div>
+  </div>
+
+  <div class="panel">
+    <div class="kefka-quote">
+      "You sound like chapters from a self-help book! Now let's see how much you truly know...
+      or better yet, how little. Some images are what they are. Others... have been touched by
+      something. Try not to embarrass yourself. Ku ku ku..."
+      <cite>— KEFKA PALAZZO</cite>
+    </div>
+  </div>
+
+  <div class="panel" style="display:flex; flex-direction:column; gap:16px; align-items:center;">
+
+    <div class="diff-label">Select Difficulty</div>
+    <div class="diff-toggle">
+      <button class="diff-btn" data-diff="easy">
+        <span class="diff-tier">Fool</span>
+        <span class="diff-sub">Easy</span>
+      </button>
+      <button class="diff-btn selected" data-diff="normal">
+        <span class="diff-tier">Wretch</span>
+        <span class="diff-sub">Normal</span>
+      </button>
+      <button class="diff-btn" data-diff="chaos">
+        <span class="diff-tier">Chaos</span>
+        <span class="diff-sub">Hard</span>
+      </button>
+    </div>
+
+    <div style="font-size:0.78rem; color:var(--dim); letter-spacing:2px; text-align:center; line-height:1.8;">
+      <span id="question-count-label"></span> QUESTIONS &nbsp;·&nbsp;
+      GOLD BADGE = NORMAL VALUE &nbsp;·&nbsp; PURPLE BADGE = QUESTION MARK APPLIED
+    </div>
+    <button class="btn" id="start-btn">BEGIN YOUR HUMILIATION</button>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     QUIZ SCREEN
+════════════════════════════════════════ -->
+<div id="quiz-screen" class="screen">
+
+  <div style="width:100%;">
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="progress-label" id="progress-label">0 / 0</div>
+  </div>
+
+  <div class="timer-row">
+    <span class="timer-label">Time</span>
+    <div class="timer-bar-wrap">
+      <div class="timer-bar-fill" id="timer-fill"></div>
+    </div>
+    <span class="timer-number" id="timer-number">30</span>
+  </div>
+
+  <div class="image-area" id="image-area"></div>
+
+  <div class="panel" style="display:flex; flex-direction:column; gap:8px;">
+    <div class="corner-deco tl"></div><div class="corner-deco tr"></div>
+    <div class="corner-deco bl"></div><div class="corner-deco br"></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="question-number" id="q-number">QUESTION 1</span>
+      <span class="type-badge" id="type-badge"></span>
+    </div>
+    <div class="question-text" id="q-text"></div>
+  </div>
+
+  <div class="choices" id="choices-wrap"></div>
+
+  <div class="kefka-reaction" id="kefka-reaction">
+    <span class="speaker">KEFKA:</span>
+    <span id="reaction-text"></span>
+  </div>
+
+  <div class="next-wrap">
+    <button class="btn" id="next-btn" style="display:none;">CONTINUE →</button>
+  </div>
+
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCORE SCREEN
+════════════════════════════════════════ -->
+<div id="score-screen" class="screen">
+
+  <div class="panel score-display">
+    <div class="corner-deco tl"></div><div class="corner-deco tr"></div>
+    <div class="corner-deco bl"></div><div class="corner-deco br"></div>
+    <div class="score-number" id="final-score">0</div>
+    <div class="score-denom" id="final-denom">/ 0</div>
+    <div class="score-label">CORRECT ANSWERS</div>
+  </div>
+
+  <div class="panel">
+    <div class="score-verdict" id="score-verdict" style="margin-bottom:16px;"></div>
+    <div class="final-reaction" id="final-reaction">
+      <span class="speaker">KEFKA:</span>
+      <span id="final-reaction-text"></span>
+    </div>
+  </div>
+
+  <div class="score-actions">
+    <button class="btn" id="play-again-btn">PLAY AGAIN</button>
+    <button class="btn danger" id="quit-btn">FLEE IN SHAME</button>
+  </div>
+
+</div>
+
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  IMAGE DATA
+//  Each entry: the image file, its primary value, and its
+//  question-mark-modified value.
+//  To add more images: drop the file in images/ and add an entry here.
+// ════════════════════════════════════════════════════════════
+const IMAGE_DATA = [
+  { file: "images/AccelerationBomb.png", primary: "Stillness",       modified: "Movement"        },
+  { file: "images/Blue.png",             primary: "Blue",            modified: "Purple"           },
+  { file: "images/CompressedWater.png",  primary: "Stack",           modified: "Spread"           },
+  { file: "images/CursedShriek.png",     primary: "Look Away",       modified: "Look At"          },
+  { file: "images/Die.png",              primary: "Die",             modified: "Don't Die"        },
+  { file: "images/DontDie.png",          primary: "Don't Die",       modified: "Die"              },
+  { file: "images/FireChariot.png",      primary: "Chariot Twister", modified: "Donut"            },
+  { file: "images/ForkedLightning.png",  primary: "Spread",          modified: "Stack"            },
+  { file: "images/Purple.png",           primary: "Purple",          modified: "Blue"             },
+  { file: "images/WaterDonut.png",       primary: "Donut",           modified: "Chariot Twister"  },
+];
+
+// ════════════════════════════════════════════════════════════
+//  REACTIONS
+// ════════════════════════════════════════════════════════════
+const WRONG_REACTIONS = [
+  "KU KU KU! Wrong, you magnificent fool!",
+  "WRONG! Even the Magitek Armor knows better than that.",
+  "Ha! Did your neurons take the day off?",
+  "Incorrect! But don't feel bad — failure IS the natural order.",
+  "Oh, you poor witless thing. Ku ku ku...",
+  "WRONG! Life... dreams... hope... your score... all meaningless! ♪",
+  "Not even close! I'm having such a good time.",
+  "Wrong answer. I love it. Do it again.",
+  "Ha ha HA! My Light of Judgment has more wisdom than you.",
+  "Incorrect! But don't worry — I'll give you something to remember me by."
+];
+
+const RIGHT_REACTIONS = [
+  "...Correct. How tediously predictable.",
+  "Right answer. I hate you a little.",
+  "Hmph. A stopped clock is right twice a day.",
+  "Fine. You knew that one. Don't let it go to your head.",
+  "Correct... but it means NOTHING. Nothing at all!",
+  "...Lucky guess. I refuse to acknowledge your intellect.",
+  "Right. How dull. How utterly, profoundly dull.",
+  "Correct! This displeases me greatly.",
+  "Ugh. You're actually thinking. Stop that.",
+  "...I suppose even the worthless find answers sometimes."
+];
+
+const FINAL_REACTIONS = [
+  {
+    minPct: 0,  maxPct: 30,
+    verdict: "SPECTACULAR FAILURE",
+    color: "#cc2200",
+    text: "KU KU KU KU KU! MAGNIFICENT! A score like that takes genuine, dedicated incompetence! You've made this worthless world just a little MORE worthless. I'm almost proud of you. Almost."
+  },
+  {
+    minPct: 31, maxPct: 50,
+    verdict: "MEDIOCRE WRETCH",
+    color: "#cc6600",
+    text: "Half marks. How perfectly, agonizingly average. You're not stupid enough to be funny and not smart enough to be interesting. This is the most middle-of-the-road disappointment I've ever witnessed. Fitting."
+  },
+  {
+    minPct: 51, maxPct: 70,
+    verdict: "MILDLY IMPRESSIVE",
+    color: "#886600",
+    text: "More than half correct? I... hmm. I'll admit that's more than I expected from someone who stared at that first image for that long. Don't get comfortable. The world is still pointless."
+  },
+  {
+    minPct: 71, maxPct: 90,
+    verdict: "INFURIATING COMPETENCE",
+    color: "#22aa55",
+    text: "High marks. Disgusting. You actually KNOW things. That's incredibly inconvenient for me. I was looking forward to laughing more. You've robbed me of joy. Are you happy with yourself? ...I still win, though. I always win."
+  },
+  {
+    minPct: 91, maxPct: 100,
+    verdict: "I REFUSE TO ACCEPT THIS",
+    color: "#d4af37",
+    text: "...WHAT. WHAT IS THIS. PERFECT?! OR NEAR-PERFECT?! This is IMPOSSIBLE! Unacceptable! You must have cheated! No one... NO ONE beats Kefka at his own game! I'll have to destroy another world just to calm down. KU KU KU... this isn't over."
+  }
+];
+
+// ════════════════════════════════════════════════════════════
+//  BUILD QUESTION POOL
+//  Every image generates 2 questions: one primary, one modified.
+//  Wrong answers are randomly drawn from all values in the pool.
+// ════════════════════════════════════════════════════════════
+
+// Collect every unique value across all images for use as wrong answers
+const ALL_VALUES = [...new Set(IMAGE_DATA.flatMap(d => [d.primary, d.modified]))];
+
+function buildQuestions() {
+  const pool = [];
+  IMAGE_DATA.forEach(entry => {
+    // Primary question
+    pool.push({
+      file: entry.file,
+      withQMark: false,
+      answer: entry.primary,
+    });
+    // Modified (question mark) question
+    pool.push({
+      file: entry.file,
+      withQMark: true,
+      answer: entry.modified,
+    });
+  });
+  return pool;
+}
+
+function generateChoices(correctAnswer) {
+  const wrong = ALL_VALUES.filter(v => v !== correctAnswer);
+  shuffle(wrong);
+  const chosen = wrong.slice(0, 3);
+  const all = shuffle([correctAnswer, ...chosen]);
+  return { options: all, correctIndex: all.indexOf(correctAnswer) };
+}
+
+// ════════════════════════════════════════════════════════════
+//  TIMER CONFIG
+// ════════════════════════════════════════════════════════════
+const TIMER_DURATION = 30;
+
+const TIME_UP_REACTIONS = [
+  "Tick tock... too slow, you dithering fool!",
+  "KU KU KU! Time's up! The world doesn't wait for the witless!",
+  "Time! What a concept. You wasted all of yours.",
+  "You just... froze. Like a statue. How fitting for someone so worthless.",
+  "Time expired. Like your chances. Like everything. Ku ku ku...",
+  "I've seen Magitek Armor think faster than you. Pathetic.",
+];
+
+// ════════════════════════════════════════════════════════════
+//  DIFFICULTY
+//  Values: "easy" | "normal" | "chaos"
+//  Not yet wired into gameplay — ready for future use.
+// ════════════════════════════════════════════════════════════
+let selectedDifficulty = 'normal';
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedDifficulty = btn.dataset.diff;
+  });
+});
+
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let currentQ = 0;
+let score = 0;
+let answered = false;
+let activeQuestions = [];
+let timerInterval = null;
+let timeLeft = 0;
+
+// ── Elements ──
+const screens = {
+  title: document.getElementById('title-screen'),
+  quiz:  document.getElementById('quiz-screen'),
+  score: document.getElementById('score-screen'),
+};
+
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens[name].classList.add('active');
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ── Title ──
+document.getElementById('question-count-label').textContent = IMAGE_DATA.length * 2;
+document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('play-again-btn').addEventListener('click', startGame);
+document.getElementById('quit-btn').addEventListener('click', () => showScreen('title'));
+
+// ════════════════════════════════════════════════════════════
+//  TIMER FUNCTIONS
+// ════════════════════════════════════════════════════════════
+
+function startTimer() {
+  timeLeft = TIMER_DURATION;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft <= 0) {
+      clearTimer();
+      autoFail();
+    }
+  }, 1000);
+}
+
+function clearTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+function updateTimerDisplay() {
+  const fill = document.getElementById('timer-fill');
+  const num  = document.getElementById('timer-number');
+  const pct  = (timeLeft / TIMER_DURATION) * 100;
+
+  fill.style.width = pct + '%';
+  num.textContent  = timeLeft;
+
+  fill.className = 'timer-bar-fill';
+  num.className  = 'timer-number';
+  if (timeLeft <= 7) {
+    fill.classList.add('danger');
+    num.classList.add('danger');
+  } else if (timeLeft <= 15) {
+    fill.classList.add('warning');
+    num.classList.add('warning');
+  }
+}
+
+function autoFail() {
+  if (answered) return;
+  answered = true;
+
+  const q = activeQuestions[currentQ];
+  document.querySelectorAll('.choice-btn').forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === q.correctIndex) btn.classList.add('reveal-correct');
+  });
+
+  const reaction = document.getElementById('kefka-reaction');
+  reaction.className = 'kefka-reaction wrong-reaction';
+  document.getElementById('reaction-text').textContent = pick(TIME_UP_REACTIONS);
+
+  setTimeout(() => {
+    currentQ++;
+    if (currentQ >= activeQuestions.length) {
+      showScore();
+    } else {
+      loadQuestion();
+    }
+  }, 2500);
+}
+
+// ════════════════════════════════════════════════════════════
+//  GAME FLOW
+// ════════════════════════════════════════════════════════════
+
+function startGame() {
+  currentQ = 0;
+  score = 0;
+  activeQuestions = shuffle(buildQuestions()).map(q => {
+    const { options, correctIndex } = generateChoices(q.answer);
+    return { ...q, options, correctIndex };
+  });
+  showScreen('quiz');
+  loadQuestion();
+}
+
+function loadQuestion() {
+  answered = false;
+  const q = activeQuestions[currentQ];
+  const total = activeQuestions.length;
+
+  // Progress
+  const pct = (currentQ / total) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `${currentQ} / ${total}`;
+
+  // Question number
+  document.getElementById('q-number').textContent = `QUESTION ${currentQ + 1}`;
+
+  // Type badge
+  const badge = document.getElementById('type-badge');
+  if (q.withQMark) {
+    badge.textContent = '? MODIFIED';
+    badge.className = 'type-badge modified';
+  } else {
+    badge.textContent = 'BASE VALUE';
+    badge.className = 'type-badge primary';
+  }
+
+  // Question text
+  document.getElementById('q-text').textContent = q.withQMark
+    ? 'The Question Mark has changed this image. What is its new value?'
+    : 'What is the value of this image?';
+
+  // Image area
+  const area = document.getElementById('image-area');
+  area.innerHTML = '';
+
+  if (q.withQMark) {
+    area.className = 'image-area dual';
+    const slotA = document.createElement('div');
+    slotA.className = 'img-slot';
+    const imgA = document.createElement('img');
+    imgA.src = q.file;
+    imgA.alt = 'Subject';
+    slotA.appendChild(imgA);
+
+    const plus = document.createElement('span');
+    plus.className = 'plus-sign';
+    plus.textContent = '+';
+
+    const slotB = document.createElement('div');
+    slotB.className = 'img-slot';
+    const imgB = document.createElement('img');
+    imgB.src = 'images/QuestionMark.png';
+    imgB.alt = 'Question Mark';
+    slotB.appendChild(imgB);
+
+    area.appendChild(slotA);
+    area.appendChild(plus);
+    area.appendChild(slotB);
+  } else {
+    area.className = 'image-area single';
+    const img = document.createElement('img');
+    img.src = q.file;
+    img.alt = 'Subject';
+    area.appendChild(img);
+  }
+
+  // Choices
+  const choicesWrap = document.getElementById('choices-wrap');
+  choicesWrap.innerHTML = '';
+  const labels = ['A', 'B', 'C', 'D'];
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.innerHTML = `<span class="choice-label">${labels[i]}</span> ${opt}`;
+    btn.addEventListener('click', () => selectAnswer(i));
+    choicesWrap.appendChild(btn);
+  });
+
+  // Reset reaction + next button
+  const reaction = document.getElementById('kefka-reaction');
+  reaction.className = 'kefka-reaction';
+  document.getElementById('reaction-text').textContent = '';
+  document.getElementById('next-btn').style.display = 'none';
+
+  startTimer();
+}
+
+function selectAnswer(chosen) {
+  if (answered) return;
+  answered = true;
+  clearTimer();
+
+  const q = activeQuestions[currentQ];
+  const correct = q.correctIndex;
+  const buttons = document.querySelectorAll('.choice-btn');
+
+  buttons.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === correct && chosen !== correct) btn.classList.add('reveal-correct');
+  });
+
+  const reaction = document.getElementById('kefka-reaction');
+  const reactionText = document.getElementById('reaction-text');
+
+  if (chosen === correct) {
+    score++;
+    buttons[chosen].classList.add('correct');
+    reaction.className = 'kefka-reaction right-reaction';
+    reactionText.textContent = pick(RIGHT_REACTIONS);
+  } else {
+    buttons[chosen].classList.add('wrong');
+    reaction.className = 'kefka-reaction wrong-reaction';
+    reactionText.textContent = pick(WRONG_REACTIONS);
+  }
+
+  document.getElementById('next-btn').style.display = 'block';
+}
+
+document.getElementById('next-btn').addEventListener('click', () => {
+  currentQ++;
+  if (currentQ >= activeQuestions.length) {
+    showScore();
+  } else {
+    loadQuestion();
+  }
+});
+
+function showScore() {
+  const total = activeQuestions.length;
+  const pct = Math.round((score / total) * 100);
+
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('final-denom').textContent = `/ ${total}`;
+
+  const verdict = FINAL_REACTIONS.find(r => pct >= r.minPct && pct <= r.maxPct)
+    || FINAL_REACTIONS[FINAL_REACTIONS.length - 1];
+
+  document.getElementById('score-verdict').textContent = verdict.verdict;
+  document.getElementById('score-verdict').style.color = verdict.color;
+  document.getElementById('final-reaction-text').textContent = verdict.text;
+
+  document.getElementById('progress-fill').style.width = '100%';
+  document.getElementById('progress-label').textContent = `${total} / ${total}`;
+
+  showScreen('score');
+}
+</script>
+</body>
+</html>
