@@ -1450,6 +1450,7 @@ function selectAnswer(chosen) {
   const isCorrect = chosen === correct;
 
   slotResults.push(isCorrect);
+  isCorrect ? kefkaCorrect() : kefkaWrong();
 
   const buttons = document.querySelectorAll('.choice-btn');
   buttons.forEach((btn, i) => {
@@ -1486,8 +1487,6 @@ function selectAnswer(chosen) {
 
     const allCorrect = slotResults.every(r => r);
     if (allCorrect) score++;
-
-    allCorrect ? kefkaCorrect() : kefkaWrong();
 
     const reaction = document.getElementById('kefka-reaction');
     reaction.className = 'kefka-reaction ' + (allCorrect ? 'right-reaction' : 'wrong-reaction');
