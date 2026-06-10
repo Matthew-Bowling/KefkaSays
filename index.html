@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KefkaSays — Trivia of Ruin</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Raleway:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,7 +25,7 @@
       height: 100%;
       background: var(--bg);
       color: var(--text);
-      font-family: 'Cinzel', Georgia, serif;
+      font-family: 'Raleway', sans-serif;
       overflow: hidden;
     }
 
@@ -105,7 +105,7 @@
     }
 
     .btn {
-      font-family: 'Cinzel', Georgia, serif;
+      font-family: 'Raleway', sans-serif;
       font-size: 0.9rem;
       letter-spacing: 2px;
       text-transform: uppercase;
@@ -250,7 +250,7 @@
       border: 1px solid rgba(106,13,173,0.35);
       border-radius: 2px;
       color: var(--text);
-      font-family: 'Cinzel', Georgia, serif;
+      font-family: 'Raleway', sans-serif;
       font-size: 0.85rem;
       cursor: pointer;
       transition: border-color 0.12s, background 0.12s;
@@ -376,7 +376,7 @@
       object-fit: contain;
     }
     .slot-timer {
-      font-family: 'Cinzel', Georgia, serif;
+      font-family: 'Raleway', sans-serif;
       font-size: 0.85rem;
       letter-spacing: 2px;
       color: var(--dim);
@@ -473,7 +473,7 @@
     .timer-bar-fill.warning { background: var(--gold); }
     .timer-bar-fill.danger  { background: var(--red); animation: timerPulse 0.5s ease-in-out infinite alternate; }
     .timer-number {
-      font-family: 'Cinzel', Georgia, serif;
+      font-family: 'Raleway', sans-serif;
       font-size: 0.85rem;
       color: var(--text);
       min-width: 22px;
@@ -511,7 +511,7 @@
       border: none;
       border-right: 1px solid rgba(106,13,173,0.5);
       color: var(--dim);
-      font-family: 'Cinzel', Georgia, serif;
+      font-family: 'Raleway', sans-serif;
       font-size: 0.78rem;
       letter-spacing: 1px;
       text-transform: uppercase;
@@ -1084,6 +1084,7 @@ let score = 0;
 let answered = false;
 let activeQuestions = [];
 let timerInterval = null;
+let autoNextTimer = null;
 let timeLeft = 0;
 
 // ── Elements ──
@@ -1146,6 +1147,13 @@ function clearTimer() {
   }
 }
 
+function clearAutoNext() {
+  if (autoNextTimer !== null) {
+    clearTimeout(autoNextTimer);
+    autoNextTimer = null;
+  }
+}
+
 function updateTimerDisplay() {
   const fill = document.getElementById('timer-fill');
   const num  = document.getElementById('timer-number');
@@ -1196,7 +1204,9 @@ function autoFail() {
   reaction.className = 'kefka-reaction wrong-reaction';
   document.getElementById('reaction-text').textContent = pick(TIME_UP_REACTIONS);
 
-  setTimeout(() => {
+  document.getElementById('next-btn').style.display = 'block';
+  autoNextTimer = setTimeout(() => {
+    autoNextTimer = null;
     currentQ++;
     if (selectedDifficulty === 'chaos') activeQuestions.push(buildChaosQuestion());
     if (selectedDifficulty === 'normal') activeQuestions.push(buildWretchQuestion());
@@ -1205,7 +1215,7 @@ function autoFail() {
     } else {
       loadQuestion();
     }
-  }, 2500);
+  }, 7000);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1215,7 +1225,7 @@ function autoFail() {
 function setChaosUI(isChaos) {
   document.getElementById('progress-wrap').style.display   = isChaos ? 'none' : 'block';
   document.getElementById('chaos-score-row').classList.toggle('visible', isChaos);
-  document.getElementById('chaos-flee-btn').style.display  = isChaos ? 'block' : 'none';
+  document.getElementById('chaos-flee-btn').style.display  = 'block';
 }
 
 function startGame() {
@@ -1337,20 +1347,20 @@ function updateQuestionHeader(q, slotIdx) {
     if (slot.type === 'combined') {
       badge.textContent = 'COMBINED';
       badge.className = 'type-badge combined';
-      document.getElementById('q-text').textContent = 'What is the combined value of these two images?';
+      document.getElementById('q-text').textContent = 'What is the value of the two debuffs that are together?';
     } else {
       badge.textContent = `${slotIdx + 1} OF ${q.slots.length}`;
       badge.className = 'type-badge ' + (slot.withQMark ? 'modified' : 'primary');
       document.getElementById('q-text').textContent = slot.withQMark
         ? `Image ${slotIdx + 1}: The Question Mark has changed this. What is its value?`
-        : `Image ${slotIdx + 1}: What is the value of this image?`;
+        : `Image ${slotIdx + 1}: What is the value of this debuff?`;
     }
   } else {
     badge.textContent = slot.withQMark ? '? MODIFIED' : 'BASE VALUE';
     badge.className = 'type-badge ' + (slot.withQMark ? 'modified' : 'primary');
     document.getElementById('q-text').textContent = slot.withQMark
       ? 'The Question Mark has changed this image. What is its new value?'
-      : 'What is the value of this image?';
+      : 'What is the value of this debuff?';
   }
 }
 
@@ -1405,6 +1415,7 @@ function kefkaWrong() {
 }
 
 function loadQuestion() {
+  clearAutoNext();
   answered = false;
   currentSlot = 0;
   slotResults = [];
@@ -1491,6 +1502,7 @@ function selectAnswer(chosen) {
 }
 
 document.getElementById('next-btn').addEventListener('click', () => {
+  clearAutoNext();
   currentQ++;
   if (selectedDifficulty === 'chaos') activeQuestions.push(buildChaosQuestion());
   if (selectedDifficulty === 'normal') activeQuestions.push(buildWretchQuestion());
