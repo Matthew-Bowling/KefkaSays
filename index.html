@@ -772,6 +772,21 @@ const WRETCH_QUESTIONS = [
   ],
 ];
 
+// ════════════════════════════════════════════════════════════
+//  CONFLICT RULES
+//  Image pairs that cannot appear together in the same multi-slot set.
+//  Add new pairs here as needed.
+// ════════════════════════════════════════════════════════════
+const CONFLICTING_PAIRS = [
+  ['images/Die.png',  'images/DontDie.png'],
+  ['images/Blue.png', 'images/Purple.png'],
+];
+
+function hasConflict(slots) {
+  const files = slots.map(s => s.file);
+  return CONFLICTING_PAIRS.some(([a, b]) => files.includes(a) && files.includes(b));
+}
+
 // Collect every unique value across all images for use as wrong answers
 const ALL_VALUES = [...new Set(IMAGE_DATA.flatMap(d => [d.primary, d.modified]))];
 
@@ -792,9 +807,15 @@ function buildSlot(file, withQMark) {
 
 function buildQuestions() {
   if (selectedDifficulty === 'normal') {
-    return WRETCH_QUESTIONS.map(set => ({
-      slots: set.map(s => buildSlot(s.file, s.withQMark))
-    }));
+    return WRETCH_QUESTIONS
+      .filter(set => {
+        if (hasConflict(set)) {
+          console.error('KefkaSays: conflicting images in set — skipping', set.map(s => s.file));
+          return false;
+        }
+        return true;
+      })
+      .map(set => ({ slots: set.map(s => buildSlot(s.file, s.withQMark)) }));
   }
   // Fool and Chaos: single-slot questions (one per image, primary + modified)
   const pool = [];
