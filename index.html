@@ -396,11 +396,14 @@
       max-width: 100%;
       object-fit: contain;
     }
-    /* Combined slot outer box — always gold-bordered so it stands out in Chaos */
+    /* Combined slot outer box — wider in all modes */
     .image-slot.combined-slot-wrap {
+      flex: 2;
+    }
+    /* Gold highlight only in non-chaos modes */
+    .image-slot.combined-slot-highlight {
       border-color: rgba(212,175,55,0.5);
       background: rgba(212,175,55,0.05);
-      flex: 2;
     }
     /* type badge for combined slot */
     .type-badge.combined {
@@ -1269,7 +1272,8 @@ function renderImageArea(q) {
       const isCombined = slot.type === 'combined';
       slotEl.className = 'image-slot'
         + (isFirstActive ? ' active' : '')
-        + (isCombined ? ' combined-slot-wrap' : '');
+        + (isCombined ? ' combined-slot-wrap' : '')
+        + (isCombined && selectedDifficulty !== 'chaos' ? ' combined-slot-highlight' : '');
       slotEl.id = `slot-${i}`;
 
       if (isCombined) {
