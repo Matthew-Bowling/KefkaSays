@@ -21,6 +21,7 @@ let currentQ = 0;
 let currentSlot = 0;
 let slotResults = [];
 let score = 0;
+let questionsAttempted = 0;
 let answered = false;
 let activeQuestions = [];
 let timerInterval = null;
@@ -123,6 +124,7 @@ function updateTimerDisplay() {
 function autoFail() {
   if (answered) return;
   answered = true;
+  questionsAttempted++;
 
   const q = activeQuestions[currentQ];
 
@@ -190,6 +192,7 @@ function startGame() {
   TIMER_DURATION = TIMER_BY_DIFFICULTY[selectedDifficulty];
   currentQ = 0;
   score = 0;
+  questionsAttempted = 0;
   activeQuestions = shuffle(buildQuestions());
   setChaosUI(selectedDifficulty === 'chaos' || selectedDifficulty === 'normal');
   showScreen('quiz');
@@ -437,7 +440,10 @@ function selectAnswer(chosen) {
   currentSlot++;
 
   if (currentSlot < q.answerOrder.length) {
-    if (selectedDifficulty === 'chaos') clearTimer();
+    if (selectedDifficulty === 'chaos' && isCorrect) {
+      timeLeft += 3;
+      updateTimerDisplay();
+    }
     setTimeout(() => {
       const nextSlotIdx = q.answerOrder[currentSlot];
       if (selectedDifficulty !== 'chaos') {
@@ -446,11 +452,11 @@ function selectAnswer(chosen) {
       }
       updateQuestionHeader(q, nextSlotIdx);
       renderChoices(q.slots[nextSlotIdx]);
-      if (selectedDifficulty === 'chaos') startTimer();
     }, 600);
   } else {
     answered = true;
     clearTimer();
+    questionsAttempted++;
 
     const allCorrect = slotResults.every(r => r);
     if (allCorrect) score++;
@@ -484,9 +490,12 @@ function showScore() {
   clearTimer();
   let verdict;
 
+  document.getElementById('final-attempted').textContent = questionsAttempted;
+
   if (selectedDifficulty === 'chaos' || selectedDifficulty === 'normal') {
     document.getElementById('final-score').textContent = score;
-    document.getElementById('final-denom').textContent = 'SURVIVED';
+    document.getElementById('final-denom').textContent = '';
+    document.getElementById('final-score-label').textContent = 'CORRECT';
     verdict = CHAOS_FINAL_REACTIONS.find(r => score >= r.minScore && score <= r.maxScore)
       || CHAOS_FINAL_REACTIONS[CHAOS_FINAL_REACTIONS.length - 1];
   } else {
@@ -494,6 +503,7 @@ function showScore() {
     const pct = Math.round((score / total) * 100);
     document.getElementById('final-score').textContent = score;
     document.getElementById('final-denom').textContent = `/ ${total}`;
+    document.getElementById('final-score-label').textContent = 'CORRECT';
     verdict = FINAL_REACTIONS.find(r => pct >= r.minPct && pct <= r.maxPct)
       || FINAL_REACTIONS[FINAL_REACTIONS.length - 1];
     document.getElementById('progress-fill').style.width = '100%';
