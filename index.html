@@ -367,6 +367,16 @@
       min-height: 50px;
       object-fit: contain;
     }
+    .slot-timer {
+      font-family: 'Cinzel', Georgia, serif;
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      color: var(--dim);
+      margin-top: 4px;
+    }
+    .image-slot.active    .slot-timer { color: var(--gold); }
+    .image-slot.slot-correct .slot-timer { color: var(--green); }
+    .image-slot.slot-wrong   .slot-timer { color: var(--red); }
 
     /* ── Timer ── */
     .timer-row {
@@ -1053,6 +1063,11 @@ function renderImageArea(q) {
       img.alt = `Slot ${i + 1}`;
       img.className = 'slot-img';
       slotEl.appendChild(img);
+
+      const timerLabel = document.createElement('div');
+      timerLabel.className = 'slot-timer';
+      timerLabel.textContent = (i + 1) * 10;
+      slotEl.appendChild(timerLabel);
 
       area.appendChild(slotEl);
     });
