@@ -815,6 +815,34 @@ function buildSlot(file, withQMark) {
   return { file, withQMark, answer, options, correctIndex };
 }
 
+const NUM_CHAOS_QUESTIONS = 5;
+
+function buildChaosQuestions() {
+  const questions = [];
+  for (let i = 0; i < NUM_CHAOS_QUESTIONS; i++) {
+    // Start with the full image pool
+    let pool = [...IMAGE_DATA];
+
+    // Resolve each conflict pair: randomly drop one image from each
+    for (const [fileA, fileB] of CONFLICTING_PAIRS) {
+      const hasA = pool.some(d => d.file === fileA);
+      const hasB = pool.some(d => d.file === fileB);
+      if (hasA && hasB) {
+        const drop = Math.random() < 0.5 ? fileA : fileB;
+        pool = pool.filter(d => d.file !== drop);
+      }
+    }
+
+    // Shuffle order and assign random primary/modified per slot
+    const slots = shuffle(pool).map(entry =>
+      buildSlot(entry.file, Math.random() < 0.5)
+    );
+
+    questions.push({ slots });
+  }
+  return questions;
+}
+
 function buildQuestions() {
   if (selectedDifficulty === 'normal') {
     return WRETCH_QUESTIONS
@@ -827,7 +855,11 @@ function buildQuestions() {
       })
       .map(set => ({ slots: set.map(s => buildSlot(s.file, s.withQMark)) }));
   }
-  // Fool and Chaos: single-slot questions (one per image, primary + modified)
+  if (selectedDifficulty === 'chaos') {
+    return buildChaosQuestions();
+  }
+
+  // Fool: single-slot questions (one per image, primary + modified)
   const pool = [];
   IMAGE_DATA.forEach(entry => {
     pool.push({ slots: [buildSlot(entry.file, false)] });
@@ -905,9 +937,10 @@ function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 // ── Title ──
 function updateQuestionCountLabel() {
-  const count = selectedDifficulty === 'normal'
-    ? WRETCH_QUESTIONS.length
-    : IMAGE_DATA.length * 2;
+  let count;
+  if (selectedDifficulty === 'normal') count = WRETCH_QUESTIONS.length;
+  else if (selectedDifficulty === 'chaos') count = NUM_CHAOS_QUESTIONS;
+  else count = IMAGE_DATA.length * 2;
   document.getElementById('question-count-label').textContent = count;
 }
 updateQuestionCountLabel();
